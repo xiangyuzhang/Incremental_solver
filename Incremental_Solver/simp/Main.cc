@@ -36,6 +36,7 @@ using namespace Incre;
 
 int main(int argc, char* argv[])
 {
+
     cout << "==================== Test start ====================" << endl;
     MiterSolver Miter(argv[1], argv[2], "output");
     Miter.buildmiter();

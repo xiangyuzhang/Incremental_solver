@@ -17,16 +17,53 @@ using namespace std;
 
 namespace Incre{
 
- inline   string& replace_all(string& str,const string& old_value,const string& new_value)
+inline void SplitString(const std::string& s, std::vector<std::string>& v, const std::string& c)   //source, result, seperator
+{
+  std::string::size_type pos1, pos2;
+  pos2 = s.find(c);
+  pos1 = 0;
+  while(std::string::npos != pos2)      //if we can find c in s
+  {
+    v.push_back(s.substr(pos1, pos2-pos1));
+ 
+    pos1 = pos2 + c.size();
+    pos2 = s.find(c, pos1);
+  }
+  if(pos1 != s.length())
+    v.push_back(s.substr(pos1));
+}
+
+
+inline string Readall(const char* path)
+{
+
+    fstream in;
+    in.open(path, ios::in);
+    istreambuf_iterator<char> beg(in), end;
+    string strdata(beg, end);
+    in.close(); 
+
+//	cout << "Now start test" << endl;
+//	cout << strdata << endl;
+    return strdata;
+}
+
+
+inline void strip_all(string& str,const string old_value)
     {
-        while(true)
-        {
-            unsigned int pos=0;
-            if((pos=str.find(old_value,0))!=string::npos)
-                str.replace(pos,old_value.length(),new_value);
-            else break;
-        }
-        return str;
+    	while(true)
+    	{
+    		if(str.find(old_value) != string::npos)
+    		{
+    			str.replace(str.find(old_value), old_value.length(), "");
+    			cout << "replaced string is " << str << endl;
+    		}
+    		else
+    		{
+    			break;
+    		}
+    	}
+
     }
 
 inline    void load_gateTypeDict(map<int, string>& gateTypeDict)
@@ -43,25 +80,16 @@ inline    void load_gateTypeDict(map<int, string>& gateTypeDict)
         gateTypeDict.insert(std::pair<int, string>(9,"zero"));
     }
 
- inline   vector<string> ReadByLine(const char* path)
-    {
-        vector<string> result;
-        string s = "";
-        ifstream infile("c432-abcmap-fmt.v");
-        if(infile.fail())
-        {
-        	cout << "Error opening " << path << endl;
-        	exit(-1);
-        }
-        else
-        {
-        	while(getline(infile, s))
-        	{
-        		result.push_back(s);
-        	}
-	        return result;
-    	}
 
+
+ inline   vector<string> ReadByColon(const char* path)
+    {
+    	vector<string> result;
+    	string read_all;
+    	read_all = Readall(path);
+    	strip_all(read_all, "\r");
+    	SplitString(read_all, result, ";\n");
+    	return result;
     }
 
 }

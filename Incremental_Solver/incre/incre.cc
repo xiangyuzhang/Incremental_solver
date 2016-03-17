@@ -56,11 +56,35 @@ void MiterSolver::genOracCNF(char const * OracPath)
 
     infile.open(OracPath);
     cout << "reading data from " << OracPath << endl;
-    Vlines = ReadByLine(OracPath);
+
+    Vlines = ReadByColon(OracPath);
+/*
     for(vector<string>::iterator iter = Vlines.begin(); iter != Vlines.end(); ++iter)
     {
         cout << *iter << endl;
     }
+*/	
+    // 1.1 Convert the original circuit to CNF format
+    vector<vector<int> > input;
+    map<int, string> varIndexDict;
+    //int varIndex = 1;
+    vector<string> cnFile;
+    vector<int> posIndex;
+    //int gateCnf = 0;
+
+    for(vector<string>::iterator iter = Vlines.begin(); iter != Vlines.end(); ++iter)
+    {
+    	string line = *iter;
+    	strip_all(line, "\n");
+    	if((line.find("input") != string::npos) && (line.find("//") == string::npos))
+    	{
+    		cout << line << endl;
+    	}
+    }
+
+
+
+
 
 }
 //void MiterSolver::genCameCNF(char const * CamePath);
