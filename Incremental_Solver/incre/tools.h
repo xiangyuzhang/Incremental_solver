@@ -56,7 +56,7 @@ inline void strip_all(string& str,const string old_value)
     		if(str.find(old_value) != string::npos)
     		{
     			str.replace(str.find(old_value), old_value.length(), "");
-    			cout << "replaced string is " << str << endl;
+ //   			cout << "replaced string is " << str << endl;
     		}
     		else
     		{

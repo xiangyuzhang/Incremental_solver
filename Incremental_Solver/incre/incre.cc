@@ -65,22 +65,81 @@ void MiterSolver::genOracCNF(char const * OracPath)
     }
 */	
     // 1.1 Convert the original circuit to CNF format
-    vector<vector<int> > input;
-    map<int, string> varIndexDict;
-    //int varIndex = 1;
+    vector<vector<int> > inputs;
+    map<string, int> varIndexDict;		//use name to find index, so string should be key
+    int varIndex = 1;
     vector<string> cnFile;
     vector<int> posIndex;
+    vector<string> PIs;
+    vector<string> POs;
+    vector<string> wires;
     //int gateCnf = 0;
 
     for(vector<string>::iterator iter = Vlines.begin(); iter != Vlines.end(); ++iter)
     {
     	string line = *iter;
     	strip_all(line, "\n");
+
+
     	if((line.find("input") != string::npos) && (line.find("//") == string::npos))
     	{
-    		cout << line << endl;
+    		cout << "Processing input (PI or CB)" << endl;
+    		// use regex to find input netname 
+    		strip_all(line, "input");
+    		strip_all(line, " ");
+    		SplitString(line, PIs, ",");
+    		vector<int> tmpPis;
+    		for(vector<string>::iterator pi = PIs.begin(); pi != PIs.end(); ++pi)
+    		{
+    			strip_all(*pi, "\\");
+    			strip_all(*pi, "[");
+    			strip_all(*pi, "]");
+    			varIndexDict.insert(std::pair<string, int>(*pi, varIndex));
+//    			cout << *pi << endl;
+    			tmpPis.push_back(varIndex);
+    			varIndex++;
+
+    		}
+    		inputs.push_back(tmpPis);
+    	}
+
+    	else if((line.find("output") != string::npos) && (line.find("//") == string::npos))
+    	{
+    		cout << "Processing output " << endl;
+    		strip_all(line, "output");
+    		strip_all(line, " ");
+    		SplitString(line, POs, ",");
+    		for(vector<string>::iterator po = POs.begin(); po != POs.end(); ++po)
+    		{
+    			strip_all(*po, "\\");
+    			strip_all(*po, "[");
+    			strip_all(*po, "]"); 
+//    			cout << *po << endl;
+    			posIndex.push_back(varIndex);
+    			varIndexDict.insert(std::pair<string,int>(*po, varIndex));
+    			varIndex++;   			
+    		}
+
+    	}
+
+    	else if((line.find("wire") != string::npos) && (line.find("//") == string::npos))
+    	{
+    		cout << "Processing wire" << endl;
+    		strip_all(line, "wire");
+    		strip_all(line, " ");
+    		SplitString(line, wires, ",");
+    		for(vector<string>::iterator w = wires.begin(); w != wires.end(); ++w)
+    		{
+    			strip_all(*w, "\\");
+    			strip_all(*w, "[");
+    			strip_all(*w, "]"); 
+//    			cout << *w << endl;
+    			varIndexDict.insert(std::pair<string,int>(*w, varIndex));
+    			varIndex++;   			
+    		}
     	}
     }
+
 
 
 
