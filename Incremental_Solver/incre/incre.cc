@@ -1,9 +1,12 @@
 #include <iostream>
 #include <map>
+#include <fstream>
+#include <algorithm>
 
 #include "incre/incre.h"
 #include "simp/SimpSolver.h"
 #include "incre/tools.h"
+
 using namespace Minisat;
 using namespace Incre;
 using namespace std;
@@ -43,18 +46,30 @@ MiterSolver::~MiterSolver()
 	cout << "MiterSolver is deleted" << endl;
 }
 
+void MiterSolver::genOracCNF(char const * OracPath)
+{
+    map<int, string> gateTypeDict;
+    ifstream infile;
+    vector<string> Vlines;
+
+    load_gateTypeDict(gateTypeDict);
+
+    infile.open(OracPath);
+    cout << "reading data from " << OracPath << endl;
+    Vlines = ReadByLine(OracPath);
+    for(vector<string>::iterator iter = Vlines.begin(); iter != Vlines.end(); ++iter)
+    {
+        cout << *iter << endl;
+    }
+
+}
+//void MiterSolver::genCameCNF(char const * CamePath);
+
 void MiterSolver::buildmiter()
 {
 	cout << "start to buildmiter" << endl;
 	cout << "The Miter_file_path is " << Miter_file_path << endl;
 	cout << "The Oracle file is " << Orac_file_path << endl;
 	cout << "The Came_file_path is " << Came_file_path << endl;
+	genOracCNF(Orac_file_path);
 }
-
-void genOracCNF(char const * OracPath)
-{
-	map<int, string> gateTypeDict;
-	load_gateTypeDict(gateTypeDict);
-
-}
-void genCameCNF(char const * CamePath);

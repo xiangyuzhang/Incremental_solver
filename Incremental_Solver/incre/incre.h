@@ -13,9 +13,6 @@ public:
 	IncreSolver(char const * path1, char const * path2);
 	~IncreSolver();
 
-//	static map<int, int> PIs;
-//	static map<int, int> POs;
-
 protected:
 
 	static char const * Orac_file_path;		//input Oracle file path

@@ -41,5 +41,5 @@ int main(int argc, char* argv[])
     Miter.buildmiter();
 
 
-
+    return 0;
 }

@@ -135,4 +135,7 @@ inline vector<string> transGATE(int type, vector<int> & lineIn, int & lineOut)
     return cnfLines;
 
 }
+
+
+
 }
