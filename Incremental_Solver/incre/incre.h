@@ -18,7 +18,7 @@ protected:
 
 	static char const * Orac_file_path;		//input Oracle file path
 	static char const * Came_file_path;		//input Camouflage file path
-
+	vector<string> duplicateCircuit(vector<string> cnFile, int start_index);
 };
 
 

@@ -33,6 +33,10 @@ IncreSolver::~IncreSolver()
 	cout << "IncreSolver is deleted" << endl;
 }
 
+vector<string> IncreSolver::duplicateCircuit(vector<string> cnFile, int start_index)
+{
+
+}
 //=================================================================================================
 //implementation of MiterSolver
 MiterSolver::MiterSolver(char const * path1, char const * path2, char const * path3):IncreSolver(path1, path2)
@@ -54,16 +58,11 @@ void MiterSolver::genOracCNF(char const * OracPath)
 
     load_gateTypeDict(gateTypeDict);
 
-    infile.open(OracPath);
     cout << "reading data from " << OracPath << endl;
 
     Vlines = ReadByColon(OracPath);
-/*
-    for(vector<string>::iterator iter = Vlines.begin(); iter != Vlines.end(); ++iter)
-    {
-        cout << *iter << endl;
-    }
-*/	
+
+
     // 1.1 Convert the original circuit to CNF format
     vector<vector<int> > inputs;
     map<string, int> varIndexDict;		//use name to find index, so string should be key
@@ -136,6 +135,7 @@ void MiterSolver::genOracCNF(char const * OracPath)
     			strip_all(*w, "\\");
     			strip_all(*w, "[");
     			strip_all(*w, "]"); 
+                strip_all(*w, "\\t");
 //    			cout << *w << endl;
     			varIndexDict.insert(std::pair<string,int>(*w, varIndex));
     			varIndex++;   			
@@ -203,7 +203,136 @@ void MiterSolver::genOracCNF(char const * OracPath)
     }
 
 }
-//void MiterSolver::genCameCNF(char const * CamePath);
+
+void MiterSolver::genCameCNF(char const * CamePath)
+{
+    vector<string> cnfLines;
+    vector<string> Vlines;
+    vector<string> PIs;
+    vector<string> POs;
+    vector<string> wires;
+    vector<vector<int> > inputs;
+    map<string, int> intVarDict;
+    map<string, int> varIndexDict;
+    map<string, int> gateTypeDict;
+    vector<string> cnFile;
+    vector<int> posIndex;
+    int camVarNum = 0;
+    vector<string> camCNFile;
+    int varIndex = 1;
+    int gateCnt = 0;
+
+    load_gateTypeDict(gateTypeDict);
+
+    cout << "Reading data from " << CamePath << endl;
+
+    Vlines = ReadByColon(CamePath);
+//======================================================================================================================
+//parse the first camouflaged circuit 
+
+    for(vector<string>::iterator iter = Vlines.begin(); iter != Vlines.end(); ++iter)
+    {
+        string line= *iter;
+        strip_all(line, "\n");
+        if((line.find("input") != string::npos) && (line.find("//") == string::npos))
+        {
+            strip_all(line, "input");
+            strip_all(line, " ");
+            SplitString(line, PIs, ",");
+            vector<int> tmpPis;
+            for(vector<string>::iterator pi = PIs.begin(); pi != PIs.end(); ++pi)
+            {
+                strip_all(*pi, "\\");
+                strip_all(*pi, "[");
+                strip_all(*pi, "]");
+                varIndexDict.insert(std::pair<string, int>(*pi, varIndex));
+//              cout << *pi << endl;
+                tmpPis.push_back(varIndex);
+                varIndex++;                
+            }  
+            inputs.push_back(tmpPis);          
+        }
+
+        else if((line.find("output") != string::npos) && (line.find("//") == string::npos))
+        {
+            cout << "Processing output " << endl;
+            strip_all(line, "output");
+            strip_all(line, " ");
+            SplitString(line, POs, ",");
+            for(vector<string>::iterator po = POs.begin(); po != POs.end(); ++po)
+            {
+                strip_all(*po, "\\");
+                strip_all(*po, "[");
+                strip_all(*po, "]"); 
+//              cout << *po << endl;
+                posIndex.push_back(varIndex);
+                varIndexDict.insert(std::pair<string,int>(*po, varIndex));
+                varIndex++;             
+            }
+        }
+
+        else if((line.find("wire") != string::npos) && (line.find("//") == string::npos))
+        {
+            cout << "Processing wire" << endl;
+            strip_all(line, "wire");
+            strip_all(line, " ");
+            SplitString(line, wires, ",");
+            for(vector<string>::iterator w = wires.begin(); w != wires.end(); ++w)
+            {
+                strip_all(*w, "\\");
+                strip_all(*w, "[");
+                strip_all(*w, "]"); 
+                strip_all(*w, "\\t");
+//              cout << *w << endl;
+                varIndexDict.insert(std::pair<string,int>(*w, varIndex));
+                varIndex++;             
+            }
+        }
+        
+        else if((line != "") && (line.front() != '/') && (line.find("module") == string:: npos))
+        {
+            string gate;
+            vector<string> cnfLines;
+//            cout << line << endl;
+            if((line.find(".") != string::npos) && (line.find("(") != string::npos))
+            {
+                gate = find_gatetype(line);
+//                cout << "Gate type is " << gate << endl;
+            }
+            else
+            {
+                cout << "verilog format is not acceptable!!!" << endl;
+                exit(-1);
+            }
+            vector<string> netname;
+            vector<int> lineIn;
+            int lineOut;
+
+            netname = find_netname(line);
+            lineOut = varIndexDict[netname.back()];
+            for(vector<string>::iterator iter = netname.begin(); iter != netname.end() - 1; ++iter)
+            {
+//                cout << varIndexDict[*iter] << endl;
+                lineIn.push_back(varIndexDict[*iter]);
+            }
+
+            int caseNo = gateTypeDict[gate];
+            cnfLines = transGATE(caseNo, lineIn, lineOut);
+            for(vector<string>::iterator iter = cnfLines.begin(); iter != cnfLines.end(); ++iter)
+            {
+                cout << *iter << endl;
+                cnFile.push_back(*iter);
+            }
+            gateCnt++;
+        
+        }                    
+    }
+    camVarNum = varIndex - 1;
+    camCNFile = cnFile;
+//========================================================================================================================
+//duplicate another camouflage circuit 
+};
+
 
 void MiterSolver::buildmiter()
 {

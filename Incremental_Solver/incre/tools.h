@@ -1,8 +1,3 @@
-//
-// Created by parallels on 3/16/16.
-//
-
-
 #include <map>
 #include <string>
 #include <vector>
