@@ -9,7 +9,7 @@
 #include <sstream>
 #include <fstream>
 #include <iostream>
-
+#include <regex>
 
 
 
@@ -91,5 +91,32 @@ inline    void load_gateTypeDict(map<int, string>& gateTypeDict)
     	SplitString(read_all, result, ";\n");
     	return result;
     }
+inline vector<string> find_netname(string gate)
+{
+	cout << "Test start" << endl;
+	string s = gate;
+	vector<string> container;
+	vector<string> netnames;
+	SplitString(s, container, "(");
+	for(vector<string>::iterator iter = container.begin(); iter != container.end(); ++iter)
+	{
+		//   cout << "The is the original line: " << *iter << endl;
+		smatch nets;
+		regex pattern("([^\\)]+)([\\)])");
+		regex_search(*iter, nets, pattern);
+		//      cout << "Number of found:" << nets.size() << endl;
+		for(int i = 0; i < nets.size(); i++)
+		{
+		if(nets[i].str().find(")") == string::npos) netnames.push_back(nets[i].str());
+		}   
+
+
+  	}    
+
+	for(vector<string>::iterator iter = netnames.begin(); iter != netnames.end(); ++iter)
+	{
+//	  cout << *iter << endl;
+	}
+	return netnames;
 
 }
