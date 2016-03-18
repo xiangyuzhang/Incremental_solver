@@ -1,6 +1,7 @@
 #include <map>
 #include <string>
 #include <iostream>
+#include <vector>
 #include "simp/SimpSolver.h"
 using namespace std;
 
@@ -25,7 +26,10 @@ class MiterSolver : public IncreSolver {
 
 private:
 	static char const * Miter_file_path;			// Export the miter CNF formatted file into the file below
-
+	vector<int> OracPIndex;
+	vector<int> OracPOndex;
+	vector<string> OraCNFile;
+	int OracVarNum;
 public:
 	MiterSolver(char const * path1, char const * path2, char const * path3);	//constructor: initialize base class and milterSolver
 	~MiterSolver();		//deconstructor
