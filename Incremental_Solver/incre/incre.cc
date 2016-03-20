@@ -2,7 +2,7 @@
 #include <map>
 #include <fstream>
 #include <algorithm>
-
+#include <string>
 #include "incre/incre.h"
 #include "simp/SimpSolver.h"
 #include "incre/tools.h"
@@ -33,10 +33,48 @@ IncreSolver::~IncreSolver()
 	cout << "IncreSolver is deleted" << endl;
 }
 
-vector<string> IncreSolver::duplicateCircuit(vector<string> cnFile, int start_index)
+vector<string> IncreSolver::duplicateCircuit(vector<string> &cnFile, int &start_index)
 {
-
+    vector<string> cnFile2;
+    for(vector<string>::iterator iter = cnFile.begin(); iter != cnFile.end(); ++iter)
+    {
+        string tmpClause = *iter;
+        vector<string> intIndexLs;
+        SplitString(*iter, intIndexLs, " ");
+        string newTmpCls;
+        for(vector<string>::iterator j = intIndexLs.begin(); j != intIndexLs.end() - 1; ++j)
+        {
+            string tmpInt(*j);
+            if(tmpInt.find("-") != string::npos)
+            {
+                strip_all(tmpInt, "-");
+                newTmpCls += "-" + tostring(stoi(tmpInt) + start_index) + " ";
+            }
+            else
+            {
+                newTmpCls += tostring(stoi(tmpInt) + start_index) + " ";
+            }
+        }
+        cnFile2.push_back(newTmpCls + "0\n");
+    }  
+    return cnFile2;
 }
+
+vector<string> IncreSolver::connectNets(vector<int> &piVec, int &start_index)           //using known start_index to connect two circuit
+{
+    vector<string> new_cnFile;
+    for(vector<int>::iterator i = piVec.begin(); i != piVec.end(); ++i)
+    {
+        string piConsLine1 = tostring(*i) + " -" + tostring(*i + start_index) + " 0\n";
+        new_cnFile.push_back(piConsLine1);
+//        cout << piConsLine1;
+        string piConsLine2 = "-" + tostring(*i) + " " + tostring(*i + start_index) + " 0\n";
+        new_cnFile.push_back(piConsLine2);
+//        cout << piConsLine2;
+    } 
+    return  new_cnFile; 
+}
+
 //=================================================================================================
 //implementation of MiterSolver
 MiterSolver::MiterSolver(char const * path1, char const * path2, char const * path3):IncreSolver(path1, path2)
@@ -49,7 +87,24 @@ MiterSolver::~MiterSolver()
 {
 	cout << "MiterSolver is deleted" << endl;
 }
-
+vector<string> MiterSolver::connectPO_xor(vector<int> &posIndex, int &camVarNum, int &xorInt)
+{
+    xorInt = camVarNum * 2;
+    vector<string> cnfLines;
+    for(vector<int>::iterator po = posIndex.begin(); po != posIndex.end(); ++po)
+    {
+        xorInt++;
+        int inV1 = *po;
+        int inV2 = *po + camVarNum;
+        int outV = xorInt;
+        cnfLines.push_back("-" + tostring(inV1) + " -" + tostring(inV2) + " -" + tostring(outV) + " 0\n");
+        cnfLines.push_back(tostring(inV1) + ' ' + tostring(inV2) + " -" + tostring(outV) + " 0\n");
+        cnfLines.push_back(tostring(inV1) + " -" + tostring(inV2) + " " + tostring(outV) + " 0\n");
+        cnfLines.push_back("-" + tostring(inV1) + " " + tostring(inV2) + " " + tostring(outV) + " 0\n");
+    }
+    print_vector(cnfLines,"connectPO_xor");
+    return cnfLines;
+}
 void MiterSolver::genOracCNF(char const * OracPath)
 {
     map<string, int> gateTypeDict;
@@ -149,7 +204,12 @@ void MiterSolver::genOracCNF(char const * OracPath)
 //            cout << line << endl;
             if((line.find(".") != string::npos) && (line.find("(") != string::npos))
             {
+
                 gate = find_gatetype(line);
+                strip_all(gate," ");
+                strip_all(gate,"\n");
+                strip_all(gate,"\t");
+//                cout << "gate is: " << gate << endl;
 //                cout << "Gate type is " << gate << endl;
             }
             else
@@ -173,7 +233,7 @@ void MiterSolver::genOracCNF(char const * OracPath)
             cnfLines = transGATE(caseNo, lineIn, lineOut);
             for(vector<string>::iterator iter = cnfLines.begin(); iter != cnfLines.end(); ++iter)
             {
-                cout << *iter << endl;
+//                cout << *iter << endl;
                 cnFile.push_back(*iter);
             }
             gateCnt++;
@@ -198,7 +258,7 @@ void MiterSolver::genOracCNF(char const * OracPath)
     ofstream outfile("OracCNF");
     for(vector<string>::iterator iter = cnFile.begin(); iter != cnFile.end(); ++iter)
     {
-        cout << *iter;
+//        cout << *iter;
         outfile << *iter;
     }
 
@@ -208,7 +268,6 @@ void MiterSolver::genCameCNF(char const * CamePath)
 {
     vector<string> cnfLines;
     vector<string> Vlines;
-    vector<string> PIs;
     vector<string> POs;
     vector<string> wires;
     vector<vector<int> > inputs;
@@ -236,8 +295,11 @@ void MiterSolver::genCameCNF(char const * CamePath)
         strip_all(line, "\n");
         if((line.find("input") != string::npos) && (line.find("//") == string::npos))
         {
+            vector<string> PIs;
+            cout << "Processing input" << endl;
             strip_all(line, "input");
             strip_all(line, " ");
+//            cout << line << endl;
             SplitString(line, PIs, ",");
             vector<int> tmpPis;
             for(vector<string>::iterator pi = PIs.begin(); pi != PIs.end(); ++pi)
@@ -246,10 +308,11 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 strip_all(*pi, "[");
                 strip_all(*pi, "]");
                 varIndexDict.insert(std::pair<string, int>(*pi, varIndex));
-//              cout << *pi << endl;
+//                cout << *pi << " = " << varIndex << endl;
                 tmpPis.push_back(varIndex);
                 varIndex++;                
             }  
+//            cout << "varIndex = " << varIndex << endl;
             inputs.push_back(tmpPis);          
         }
 
@@ -315,22 +378,107 @@ void MiterSolver::genCameCNF(char const * CamePath)
 //                cout << varIndexDict[*iter] << endl;
                 lineIn.push_back(varIndexDict[*iter]);
             }
-
+            strip_all(gate," ");
+            strip_all(gate,"\n");
+            strip_all(gate,"\t");
             int caseNo = gateTypeDict[gate];
+
+ //           cout << "in mtr " << gate << endl;
             cnfLines = transGATE(caseNo, lineIn, lineOut);
             for(vector<string>::iterator iter = cnfLines.begin(); iter != cnfLines.end(); ++iter)
             {
-                cout << *iter << endl;
+//                cout << *iter << endl;
                 cnFile.push_back(*iter);
             }
             gateCnt++;
         
         }                    
     }
+    print_vector(cnFile, "original_cam");
     camVarNum = varIndex - 1;
     camCNFile = cnFile;
 //========================================================================================================================
 //duplicate another camouflage circuit 
+    cout << "duplicate another circuit" << endl;
+    vector<string> cnFile2 =  duplicateCircuit(cnFile, camVarNum);
+    cout << "size of cnFile" << cnFile.size() << endl;
+    cout << "size of cnFile2" << cnFile2.size() << endl;
+    cnFile.push_back("c The second camouflage circuit:\n");
+    vector<string> cnFile_merged;
+    cnFile_merged = cnFile + cnFile2;
+    print_vector(cnFile_merged, "cnFile_merged");
+
+
+//========================================================================================================================
+//add constrains
+//1, connect PIs
+    cout << "connect PIs" << endl;
+    cnFile_merged.push_back("c Force PIs of 2 ckts to be the same:\n"); 
+    vector<string> connection = connectNets(inputs[0], camVarNum); 
+    vector<string> cnFile_PIconnected;          
+    cnFile_PIconnected = cnFile_merged + connection;
+    print_vector(cnFile_PIconnected, "cnFile_PIconnected");
+//========================================================================================================================
+//2, add forbidden bits
+
+//========================================================================================================================
+//3, use XOR connect POs
+    cout << "connect POs using XOR" << endl;
+    int xorInt = 0;
+    cnFile_PIconnected.push_back("c XOR outputs of 2 ckts:\n");
+    vector<string> XOR_connection = connectPO_xor(posIndex, camVarNum, xorInt);
+    vector<string> cnFile_POconnected;
+    cnFile_POconnected = cnFile_PIconnected + XOR_connection;
+    print_vector(cnFile_POconnected, "cnFile_POconnected");
+//========================================================================================================================
+//4, use Or to connect all the XOR
+    cout << "connect all the XORs using Or" << endl; 
+    cnFile_POconnected.push_back("c The last OR gate of the miter:\n");
+    int orIndex = xorInt + 1;
+    vector<int> XOR_outputs;
+    for (int XOR_index = camVarNum*2 + 1; XOR_index < orIndex; XOR_index++)
+    {
+        XOR_outputs.push_back(XOR_index);
+    }
+    vector<string> OR_connection = transGATE(2, XOR_outputs, orIndex);
+    vector<string> final_miter;
+    final_miter = cnFile_POconnected + OR_connection;
+
+    int varNum = orIndex;
+//========================================================================================================================
+//add file info
+    cout << "adding file info" << endl;
+    int clauseNum = final_miter.size() - 5;
+    string cmmtline1 = "c This file is generated by genCameCNF\n";
+    string cmmtline2 = "c Generated on " + get_localtime();
+    string firstLine = "p cnf " + tostring(varNum) + " " + tostring(clauseNum) + " \n";
+    final_miter.insert(final_miter.begin(), firstLine);
+    final_miter.insert(final_miter.begin(), cmmtline2);
+    final_miter.insert(final_miter.begin(), cmmtline1);
+
+
+    baseCnfMtrLs = final_miter;
+    inputsInt = inputs;
+    vector<int> camPIndex = inputs.front();
+    vector<int> camCBindex;         //control bits can be many lines, so all the elements in inputs but first are all cam
+    for(vector<vector<int> >::iterator iter = inputs.begin() + 1; iter != inputs.end(); ++iter)
+    {
+        camCBindex += *iter;
+    }
+    unsigned int pbitsNum = camCBindex.size();
+    unsigned int ObfGateNum = pbitsNum/2;
+    vector<int> camPOindex = posIndex;
+    unsigned int baseMtrVarNum = varNum;
+    unsigned int PInum2grab = camPIndex.size();
+    unsigned int miterOutIndex = varNum; 
+
+    ofstream outfile("miterCNF");
+    for(vector<string>::iterator iter = final_miter.begin(); iter != final_miter.end(); ++iter)
+    {
+//        cout << *iter;
+        outfile << *iter;
+    }
+
 };
 
 
@@ -341,4 +489,5 @@ void MiterSolver::buildmiter()
 	cout << "The Oracle file is " << Orac_file_path << endl;
 	cout << "The Came_file_path is " << Came_file_path << endl;
 	genOracCNF(Orac_file_path);
+    genCameCNF(Came_file_path);
 }

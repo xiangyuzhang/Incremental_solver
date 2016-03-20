@@ -18,7 +18,9 @@ protected:
 
 	static char const * Orac_file_path;		//input Oracle file path
 	static char const * Came_file_path;		//input Camouflage file path
-	vector<string> duplicateCircuit(vector<string> cnFile, int start_index);
+	vector<string> duplicateCircuit(vector<string> &cnFile, int &start_index);
+	vector<string> connectNets(vector<int> &piVec, int &start_index);			//using known start_index to connect two circuit
+
 };
 
 
@@ -29,7 +31,21 @@ private:
 	vector<int> OracPIndex;
 	vector<int> OracPOndex;
 	vector<string> OraCNFile;
-	int OracVarNum;
+	unsigned int OracVarNum;
+
+	vector<string> baseCnfMtrLs;		// completed miter (including original Cam, duplicated Cam, XOR, Or)
+	vector<vector<int> > inputsInt;		// vector of PI (or CB) list
+	vector<vector<int> > inputs;		// same to inputsInt
+	vector<int> camPIndex;				//
+	vector<int> camCBindex;				// CB expect duplicated circuit
+	unsigned int pbitsNum;				// #CB
+	unsigned int ObfGateNum;			// #obfusgates
+	vector<int> camPOindex;				// PI index list
+	unsigned int camVarNum;				// total number of wires + inputs + CBs + outputs in the original cam ckt	
+	vector<string> camCNFile;			// original Camouflaged circuit CNF
+	unsigned int baseMtrVarNum;			// total variable number (original + duplicated + XOR + OR)
+	unsigned int PInum2grab;			// #PI, equal to original camouflaged circuit #PI
+	unsigned int miterOutIndex; 		// last index of miter
 public:
 	MiterSolver(char const * path1, char const * path2, char const * path3);	//constructor: initialize base class and milterSolver
 	~MiterSolver();		//deconstructor
@@ -39,6 +55,8 @@ private:
 	void genOracCNF(char const * OracPath);
 	void genCameCNF(char const * CamePath);
 	void genCameCNF(char const * CamePath, string Muxstyle);	// used for later
+
+	vector<string> connectPO_xor(vector<int> &posIndex, int &camVarNum, int &xorInt);			//used only for two duplicated circuit
 };
 
 
@@ -55,6 +73,7 @@ public:
 class AddonSolver: public IncreSolver {
 public:
 	AddonSolver();		// constructor: for copy and init
+	AddonSolver(AddonSolver &pre_AddonSolver);
 	~AddonSolver();
 
 	map<int, int> Solution;		// store solution for this iteration

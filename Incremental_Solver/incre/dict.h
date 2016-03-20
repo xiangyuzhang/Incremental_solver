@@ -46,7 +46,7 @@ inline vector<string> transGATE(int type, vector<int> & lineIn, int & lineOut)
             {
                 string inVstr = tostring(*iter);
                 firstLine += inVstr + " ";
-                cnfLines.push_back("-" + inVstr + " " + outV + " \n");
+                cnfLines.push_back("-" + inVstr + " " + outV + " 0\n");
             }
             firstLine += "-" + outV + " 0\n";
             cnfLines.insert(cnfLines.begin(), firstLine);
@@ -127,7 +127,7 @@ inline vector<string> transGATE(int type, vector<int> & lineIn, int & lineOut)
 
         default:
         {
-            cout << "gate is not acceptable!!!\n";
+            cout << "gate " << type << " is not acceptable!!!\n";
             break;
         }
     }

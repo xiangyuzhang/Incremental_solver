@@ -125,9 +125,40 @@ inline vector<string> find_netname(string gate)
 
 inline string find_gatetype(string line)
     {
+//        cout << line << endl;
+        strip_all(line, " ");
+        regex pattern("^([a-z]*)([0-9]*)");
         smatch result;
-        regex pattern("([a-zA-Z])*");
         regex_search(line, result, pattern);
-        return result[0].str();
+        return result[1].str();
     }
+
+inline void print_vector(vector<string> list, const char * path)
+    {
+        ofstream outfile(path);
+        for(vector<string>::iterator iter = list.begin(); iter != list.end(); ++iter)
+        {
+            outfile << *iter;
+        }
+        cout << "printed to " << path << endl;
+    }
+
+
+template <typename T>
+std::vector<T> operator+(const std::vector<T> &A, const std::vector<T> &B)
+{
+    std::vector<T> AB;
+    AB.reserve( A.size() + B.size() );                // preallocate memory
+    AB.insert( AB.end(), A.begin(), A.end() );        // add A;
+    AB.insert( AB.end(), B.begin(), B.end() );        // add B;
+    return AB;
+}
+
+template <typename T>
+std::vector<T> &operator+=(std::vector<T> &A, const std::vector<T> &B)
+{
+    A.reserve( A.size() + B.size() );                // preallocate memory without erase original data
+    A.insert( A.end(), B.begin(), B.end() );         // add B;
+    return A;                                        // here A could be named AB
+}
 }
