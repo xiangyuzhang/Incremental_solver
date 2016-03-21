@@ -38,21 +38,26 @@ private:
 	vector<vector<int> > inputs;		// same to inputsInt
 	vector<int> camPIndex;				//
 	vector<int> camCBindex;				// CB expect duplicated circuit
-	unsigned int pbitsNum;				// #CB
-	unsigned int ObfGateNum;			// #obfusgates
-	vector<int> camPOindex;				// PI index list
-	unsigned int camVarNum;				// total number of wires + inputs + CBs + outputs in the original cam ckt	
+	vector<int> miterCBindex;			// CB include duplicated circuit 
+	int pbitsNum;						// #CB
+	int ObfGateNum;						// #obfusgates
+	vector<int> camPOindex;				// PO index list
+	int camVarNum;						// total number of wires + inputs + CBs + outputs in the original cam ckt	
 	vector<string> camCNFile;			// original Camouflaged circuit CNF
-	unsigned int baseMtrVarNum;			// total variable number (original + duplicated + XOR + OR)
-	unsigned int PInum2grab;			// #PI, equal to original camouflaged circuit #PI
-	unsigned int miterOutIndex; 		// last index of miter
+	int baseMtrVarNum;					// total variable number (original + duplicated + XOR + OR)
+	int PInum2grab;						// #PI, equal to original camouflaged circuit #PI
+	int miterOutIndex; 					// last index of miter
+
+	int cktTotVarNum;					// number of wire including miter and oracle circuit
+	vector<int> nodes2grab; 
+	vector<int> oracPONodes2grab;		
 public:
 	MiterSolver(char const * path1, char const * path2, char const * path3);	//constructor: initialize base class and milterSolver
 	~MiterSolver();		//deconstructor
 
 	void buildmiter();		// build CNF formatted miter and export to Miter_file_path
 private:
-	void genOracCNF(char const * OracPath);
+	void genOracCNF(char const * OracPath, int start);
 	void genCameCNF(char const * CamePath);
 	void genCameCNF(char const * CamePath, string Muxstyle);	// used for later
 
