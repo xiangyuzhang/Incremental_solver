@@ -276,8 +276,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
     map<string, int> gateTypeDict;
     vector<string> cnFile;
     vector<int> posIndex;
-    int camVarNum = 0;
-    vector<string> camCNFile;
+    camVarNum = 0;
     int varIndex = 1;
     int gateCnt = 0;
 
@@ -504,14 +503,13 @@ void MiterSolver::buildmiter()
     miter_with_orac.insert(miter_with_orac.begin(), cmmtline2);
     miter_with_orac.insert(miter_with_orac.begin(), cmmtline1);
     print_vector(miter_with_orac, "buildmiter");
-
-    nodes2grab = camPIndex + camCBindex;
+    nodes2grab = camPIndex;
+    miterCBindex = camCBindex;
     for(vector<int>::iterator pbitIndex = camCBindex.begin(); pbitIndex != camCBindex.end(); ++pbitIndex)
     {
         miterCBindex.push_back(*pbitIndex + camVarNum);
 
     } 
-
     for(vector<int>::iterator po = OracPOndex.begin(); po != OracPOndex.end(); ++po)
     {
         int newPO = *po + miterOutIndex;
@@ -519,7 +517,12 @@ void MiterSolver::buildmiter()
     }
     nodes2grab += miterCBindex;
     nodes2grab += oracPONodes2grab;
-
-
+    print_vector(camPIndex, "camPIndex");
+    print_vector(camCBindex, "camCBindex");
+    print_vector(miterCBindex, "miterCBindex");
+    print_vector(nodes2grab, "nodes2grab");
+    print_vector(OracPOndex, "OracPOndex");
+    print_vector(oracPONodes2grab, "oracPONodes2grab");
+    // nned to grab oracle PIPO (use cam PI instead), miter CB
 
 }

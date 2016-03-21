@@ -142,7 +142,15 @@ inline void print_vector(vector<string> list, const char * path)
         }
         cout << "printed to " << path << endl;
     }
-
+inline void print_vector(vector<int> list, const char * path)
+{
+        ofstream outfile(path);
+        for(vector<int>::iterator iter = list.begin(); iter != list.end(); ++iter)
+        {
+            outfile << *iter << " ";
+        }
+        cout << "printed to " << path << endl;    
+}
 
 template <typename T>
 std::vector<T> operator+(const std::vector<T> &A, const std::vector<T> &B)
