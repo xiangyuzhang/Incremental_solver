@@ -84,7 +84,14 @@ inline    void load_gateTypeDict(map<string, int>& gateTypeDict)
         gateTypeDict.insert(std::pair<string, int>("zero", 9));
     }
 
-
+inline void print_map(map<int, string>& input_map)
+{
+    cout << "map contain:" << endl;
+    for(map<int, string>::iterator it = input_map.begin(); it != input_map.end(); ++it)
+    {
+        cout << it->first << " " << it->second << endl;
+    }
+}
 
  inline   vector<string> ReadByColon(const char* path)
     {

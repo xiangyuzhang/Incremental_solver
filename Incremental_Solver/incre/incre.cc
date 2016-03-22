@@ -18,6 +18,10 @@ using namespace std;
 
 //=================================================================================================
 // declear static variable
+
+Lit AddonSolver::miterOut;
+
+lbool IncreSolver::ret;
 char const * IncreSolver::Orac_file_path;
 char const * IncreSolver::Came_file_path;
 SimpSolver IncreSolver::S;
@@ -26,9 +30,18 @@ vector<int> IncreSolver::nodes2grab;
 const char * IncreSolver::Solver_solution = "Solver_solution";
 const char * IncreSolver::target_cnf = "target.cnf";
 map<int, string> IncreSolver::Solution;
-lbool IncreSolver::ret;
 int IncreSolver::miterOutIndex;
-Lit AddonSolver::miterOut;
+vector<int> IncreSolver::camCBindex;              // CB expect duplicated circuit
+vector<int> IncreSolver::miterCBindex;            // CB include duplicated circuit 
+vector<int> IncreSolver::camCB2index;             // suplication's CB
+vector<int> IncreSolver::camPIndex;               // miter first circuit's PI, and also it the oracle's PI
+vector<int> IncreSolver::OracPOndex;
+map<int, string> IncreSolver::CB1temp;            // store temporary (only in this iteration) original CB 
+map<int, string> IncreSolver::CB2temp;            // store temporary (only in this iteration) duplication CB
+map<int, string> IncreSolver::PItemp;             // store temporary (only in this iteration) oracle PI
+map<int, string> IncreSolver::POtemp;             // store temporary (only in this iteration) oracle PO
+vector<map<int, string> > IncreSolver::OracPIs;   // store all temp PIs 
+vector<map<int, string> > IncreSolver::OracPOs;   // store all temp POs              
 //=================================================================================================
 //implementation of IncreSolver
 IncreSolver::IncreSolver()
@@ -519,13 +532,12 @@ void MiterSolver::buildmiter()
     print_vector(miter_with_orac, target_cnf);
 //========================================================================================================================
 //update miterCBindex to include duplication's CB
-    nodes2grab = camPIndex;
-    miterCBindex = camCBindex;
     for(vector<int>::iterator pbitIndex = camCBindex.begin(); pbitIndex != camCBindex.end(); ++pbitIndex)
     {
-        miterCBindex.push_back(*pbitIndex + camVarNum);
+        camCB2index.push_back(*pbitIndex + camVarNum);
 
     } 
+    miterCBindex = camCBindex + camCB2index;
 //========================================================================================================================    
 //update oracPOnodes2grab with the linked oracle circuit
     for(vector<int>::iterator po = OracPOndex.begin(); po != OracPOndex.end(); ++po)
@@ -534,7 +546,8 @@ void MiterSolver::buildmiter()
         oracPONodes2grab.push_back(newPO);
     }
 //========================================================================================================================
-//nodes2grab now includes miterCBindex, camPIndex, oracPOndex  
+//nodes2grab now includes miterCBindex, camPIndex, oracPOndex 
+    nodes2grab = camPIndex; 
     nodes2grab += miterCBindex;
     nodes2grab += oracPONodes2grab;
     print_vector(camPIndex, "camPIndex");
@@ -563,6 +576,7 @@ void AddonSolver::start_solving()
 {
     solve();        //testing: use same setting with Duo's version, Solution file is in "increIterationSolution.log"
     grabnodes();
+    print_solution("iteration_solu");
     addconstrains();
 
 }
@@ -574,23 +588,79 @@ void IncreSolver::grabnodes()     //Grab new PI, PO nodes from solution given by
     cout << "call grabnodes" << endl;
     if(ret == l_True)
     {
-        for(vector<int>::iterator node = nodes2grab.begin(); node != nodes2grab.end(); ++node)
-        {
-            if(S.model[*node - 1] != l_Undef)
-            {
-                if(S.model[*node - 1] == l_True) Solution.insert(std::pair<int,string>(*node, "1"));
-                else Solution.insert(std::pair<int, string>(*node, "0"));
-            }
-        }
-
+        grab(camPIndex, PItemp);
+        grab(OracPOndex, POtemp);
+        grab(camCBindex, CB1temp);
+        grab(camCB2index, CB2temp);
     }
 
 }
+
+void IncreSolver::grab(vector<int> &list, map<int,string> &target)
+{
+    for(vector<int>::iterator node = list.begin(); node != list.end(); ++node)
+    {
+        if(S.model[*node - 1] != l_Undef)
+        {
+            if(S.model[*node - 1] == l_True) target.insert(std::pair<int,string>(*node, "1"));
+            else target.insert(std::pair<int, string>(*node, "0"));
+        }
+    }
+}
+
 void AddonSolver::addconstrains()
 {
     cout << "call addconstrains" << endl;
 }
 
+void AddonSolver::print_solution(const char * path)
+{
+
+    ofstream outfile(path);
+    outfile << "------The found PI vector that differentiate CB" << endl;
+    for(map<int, string>::iterator index = CB1temp.begin(); index != CB1temp.end(); ++index)
+    {
+        outfile << index->first << "\t";
+    }
+
+    outfile << endl;
+    for(map<int, string>::iterator value = CB1temp.begin(); value != CB1temp.end(); ++value)
+    {
+        outfile << value->second << "\t";
+    }    
+    outfile << "\n------with\n";
+    for(map<int, string>::iterator index = CB2temp.begin(); index != CB2temp.end(); ++index)
+    {
+        outfile << index->first << "\t";
+    }
+    outfile << endl;
+    for(map<int, string>::iterator value = CB2temp.begin(); value != CB2temp.end(); ++value)
+    {
+        outfile << value->second << "\t";
+    }  
+    outfile << "\n-----is\n"; 
+    for(map<int, string>::iterator index = PItemp.begin(); index != PItemp.end(); ++index)
+    {
+        outfile << index->first << "\t";
+    }
+    outfile << endl;
+    for(map<int, string>::iterator value = PItemp.begin(); value != PItemp.end(); ++value)
+    {
+        outfile << value->second << "\t";
+    }
+    outfile << endl;
+    outfile << "The corresponding primary outputs are:" << endl;
+     for(map<int, string>::iterator index = POtemp.begin(); index != POtemp.end(); ++index)
+    {
+        outfile << index->first << "\t";
+    }
+    outfile << endl;
+    for(map<int, string>::iterator value = POtemp.begin(); value != POtemp.end(); ++value)
+    {
+        outfile << value->second << "\t";
+    }    
+    
+}
 void AddonSolver::solve()   // used to solve both miter and addons
 {
     ofstream outfile(Solver_solution);

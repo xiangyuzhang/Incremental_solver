@@ -27,15 +27,28 @@ protected:
 	static const char  * Came_file_path;		// input Camouflage file path
 	static const char * Solver_solution;
 	static const char  * target_cnf;			// output of buildmiter, input of solver, and output of addon
+	static vector<int> camPIndex;				// miter first circuit's PI, and also it the oracle's PI
+	static vector<int> OracPOndex;				
+	static vector<int> camCBindex;				// CB expect duplicated circuit
+	static vector<int> miterCBindex;			// CB include duplicated circuit 
+	static vector<int> camCB2index;				// suplication's CB
+	static map<int, string> CB1temp;			// store temporary (only in this iteration) original CB 
+	static map<int, string> CB2temp;			// store temporary (only in this iteration) duplication CB
+	static map<int, string> PItemp;				// store temporary (only in this iteration) oracle PI
+	static map<int, string> POtemp;				// store temporary (only in this iteration) oracle PO
+	static vector<map<int, string> > OracPIs;	// store all temp PIs 
+	static vector<map<int, string> > OracPOs;	// store all temp POs
 	static map<int, string> Solution;			// store solution for addon in this iteration
 	static SimpSolver S;						// used for solve add on
 	static SimpSolver S_final;					// used for solve finalSolue
 	static lbool ret;							// indicator: indicate whether this iteration in addon is sat or not
 	static	int miterOutIndex; 					// last index of miter
 	static vector<int> nodes2grab;
-	vector<string> duplicateCircuit(vector<string> &cnFile, int &start_index);
-	vector<string> connectNets(vector<int> &piVec, int &start_index);			//using known start_index to connect two circuit
-	void grabnodes();
+	inline vector<string> duplicateCircuit(vector<string> &cnFile, int &start_index);
+	inline vector<string> connectNets(vector<int> &piVec, int &start_index);			//using known start_index to connect two circuit
+	inline void grab(vector<int> &list, map<int,string> &target);	//searching elements in list in solution list(S.model[], index left shifted by 1), assign into target
+
+	inline void grabnodes();
 };
 
 
@@ -43,16 +56,12 @@ class MiterSolver : public IncreSolver {
 
 private:
 	vector<int> OracPIndex;
-	vector<int> OracPOndex;
 	vector<string> OraCNFile;
 	unsigned int OracVarNum;
 
 	vector<string> baseCnfMtrLs;		// completed miter (including original Cam, duplicated Cam, XOR, Or)
 	vector<vector<int> > inputsInt;		// vector of PI (or CB) list
 	vector<vector<int> > inputs;		// same to inputsInt
-	vector<int> camPIndex;				//
-	vector<int> camCBindex;				// CB expect duplicated circuit
-	vector<int> miterCBindex;			// CB include duplicated circuit 
 	int pbitsNum;						// #CB
 	int ObfGateNum;						// #obfusgates
 	vector<int> camPOindex;				// PO index list
@@ -94,7 +103,8 @@ public:
 	void start_solving();
 
 
-protected:
+private:
+	inline void print_solution(const char * path);
 	static Lit miterOut;
 //	static vector<>	PItemp;
 //	static vector<> POtemp;
