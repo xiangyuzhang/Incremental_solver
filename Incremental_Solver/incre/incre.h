@@ -25,7 +25,12 @@ protected:
 
 	static const char  * Orac_file_path;		// input Oracle file path
 	static const char  * Came_file_path;		// input Camouflage file path
+	static const char * Solver_solution;
 	static const char  * target_cnf;			// output of buildmiter, input of solver, and output of addon
+	static map<int, string> Solution;			// store solution for addon in this iteration
+	static SimpSolver S;						// used for solve add on
+	static SimpSolver S_final;					// used for solve finalSolue
+	static lbool ret;							// indicator: indicate whether this iteration in addon is sat or not
 	static	int miterOutIndex; 					// last index of miter
 	static vector<int> nodes2grab;
 	vector<string> duplicateCircuit(vector<string> &cnFile, int &start_index);
@@ -87,15 +92,13 @@ public:
 	AddonSolver(AddonSolver &pre_AddonSolver);
 	~AddonSolver();
 	void start_solving();
-	map<int, int> Solution;		// store solution for this iteration
+
 
 protected:
-	static const char * Solver_solution;
 	static Lit miterOut;
 //	static vector<>	PItemp;
 //	static vector<> POtemp;
 //	static vector<> CBPtemp
-	static SimpSolver S;
 	void addconstrains();
 	void solve();	// used to solve both miter and addons
 };

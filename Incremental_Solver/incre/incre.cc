@@ -20,10 +20,13 @@ using namespace std;
 // declear static variable
 char const * IncreSolver::Orac_file_path;
 char const * IncreSolver::Came_file_path;
-SimpSolver AddonSolver::S;
+SimpSolver IncreSolver::S;
+SimpSolver IncreSolver::S_final;
 vector<int> IncreSolver::nodes2grab;
-const char * AddonSolver::Solver_solution = "Solver_solution";
+const char * IncreSolver::Solver_solution = "Solver_solution";
 const char * IncreSolver::target_cnf = "target.cnf";
+map<int, string> IncreSolver::Solution;
+lbool IncreSolver::ret;
 int IncreSolver::miterOutIndex;
 Lit AddonSolver::miterOut;
 //=================================================================================================
@@ -446,6 +449,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
         XOR_outputs.push_back(XOR_index);
     }
     vector<string> OR_connection = transGATE(2, XOR_outputs, orIndex);
+    OR_connection.push_back(tostring(orIndex) + " 0\n");
     vector<string> final_miter;
     final_miter = cnFile_POconnected + OR_connection;
 
@@ -568,7 +572,18 @@ void AddonSolver::start_solving()
 void IncreSolver::grabnodes()     //Grab new PI, PO nodes from solution given by Minisat and stored in satRes.log
 {
     cout << "call grabnodes" << endl;
-    vector<string> Solu;
+    if(ret == l_True)
+    {
+        for(vector<int>::iterator node = nodes2grab.begin(); node != nodes2grab.end(); ++node)
+        {
+            if(S.model[*node - 1] != l_Undef)
+            {
+                if(S.model[*node - 1] == l_True) Solution.insert(std::pair<int,string>(*node, "1"));
+                else Solution.insert(std::pair<int, string>(*node, "0"));
+            }
+        }
+
+    }
 
 }
 void AddonSolver::addconstrains()
@@ -591,12 +606,9 @@ void AddonSolver::solve()   // used to solve both miter and addons
         cout << "UnSAT" << endl;
         exit(20);
     }
-    cout << "miterOutIndex = " << miterOutIndex << endl;
-    miterOut = mkLit(miterOutIndex - 1, false);
-    bool myRes = S.solve(miterOut);
-    lbool ret;
-    if(myRes == true) ret = l_True;
-    else ret = l_False;
+    vec<Lit> dummy;
+    ret = S.solveLimited(dummy);
+
     if(ret == l_True)
     {
         outfile << "SAT" << endl;
