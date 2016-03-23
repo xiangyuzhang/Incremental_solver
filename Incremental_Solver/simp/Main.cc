@@ -39,16 +39,15 @@ using namespace std;
 //static Solver* solver;
 int main(int argc, char* argv[])
 {
-//	SimpSolver S;
+
 	const char * Orac = argv[1];
 	const char * Cam = argv[2];
-//	solver = &S;
-    cout << "==================== Test start ====================" << endl;
     MiterSolver Miter(Orac, Cam);
     Miter.buildmiter();
-    cout << "==================== Solving Miter =================" << endl;			//test using: forbid incremental, use addon.solve, addon.grabnodes, addon.addconstrains for only once;
+    AddonSolver *addon = new AddonSolver;
+    addon->start_solving();
+    delete addon;
 
-    AddonSolver Addon;
-    Addon.start_solving();
+
     return 0;
 }

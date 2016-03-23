@@ -72,7 +72,6 @@ inline void strip_all(string& str,const string old_value)
 
 inline    void load_gateTypeDict(map<string, int>& gateTypeDict)
     {
-        cout << "load gateTypeDict" << endl;
         gateTypeDict.insert(std::pair<string, int>("and",1));
         gateTypeDict.insert(std::pair<string, int>("or", 2));
         gateTypeDict.insert(std::pair<string, int>("xor", 3));
@@ -147,7 +146,6 @@ inline void print_vector(vector<string> list, const char * path)
         {
             outfile << *iter;
         }
-        cout << "printed to " << path << endl;
     }
 inline void print_vector(vector<int> list, const char * path)
 {
@@ -156,7 +154,6 @@ inline void print_vector(vector<int> list, const char * path)
         {
             outfile << *iter << " ";
         }
-        cout << "printed to " << path << endl;    
 }
 
 template <typename T>
