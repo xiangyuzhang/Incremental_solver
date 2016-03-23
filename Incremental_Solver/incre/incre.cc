@@ -31,11 +31,21 @@ const char * IncreSolver::Solver_solution = "Solver_solution";
 const char * IncreSolver::target_cnf = "target.cnf";
 map<int, string> IncreSolver::Solution;
 int IncreSolver::miterOutIndex;
+vector<int> IncreSolver::addon_CB1;               // store temporary (only in this iteration) first duplication CB
+vector<int> IncreSolver::addon_CB2;               // store temporary (only in this iteration) first duplication CB
 vector<int> IncreSolver::camCBindex;              // CB expect duplicated circuit
 vector<int> IncreSolver::miterCBindex;            // CB include duplicated circuit 
 vector<int> IncreSolver::camCB2index;             // suplication's CB
 vector<int> IncreSolver::camPIndex;               // miter first circuit's PI, and also it the oracle's PI
+vector<int> IncreSolver::camPOindex;
 vector<int> IncreSolver::OracPOndex;
+vector<int> IncreSolver::addon_PI1;
+vector<int> IncreSolver::addon_PI2;
+vector<int> IncreSolver::addon_PO1;
+vector<int> IncreSolver::addon_PO2;
+int IncreSolver::cktTotVarNum = 0;                   // number of wire including miter and oracle circuit 
+int IncreSolver::camVarNum = 0;                       // total number of wires + inputs + CBs + outputs in the original cam ckt   
+vector<string> IncreSolver::camCNFile;            // original Camouflaged circuit CNF
 map<int, string> IncreSolver::CB1temp;            // store temporary (only in this iteration) original CB 
 map<int, string> IncreSolver::CB2temp;            // store temporary (only in this iteration) duplication CB
 map<int, string> IncreSolver::PItemp;             // store temporary (only in this iteration) oracle PI
@@ -81,7 +91,7 @@ vector<string> IncreSolver::duplicateCircuit(vector<string> &cnFile, int &start_
     return cnFile2;
 }
 
-vector<string> IncreSolver::connectNets(vector<int> &piVec, int &start_index)           //piVec: nets to connect, start_index + 1: the first PI in second circuit you want to connect 
+vector<string> IncreSolver::connectNets(vector<int> &piVec, int start_index)           //piVec: nets to connect, start_index + 1: the first PI in second circuit you want to connect 
 {
     vector<string> new_cnFile;
     for(vector<int>::iterator i = piVec.begin(); i != piVec.end(); ++i)
@@ -515,7 +525,7 @@ void MiterSolver::buildmiter()
 //add both Oracle and miter to single circuit
     cktTotVarNum = OracVarNum + baseMtrVarNum;
     cout << "OracVarNum = " << OracVarNum << endl;
-    cout << "baseMtrVarNum" << baseMtrVarNum << endl;
+    cout << "baseMtrVarNum = " << baseMtrVarNum << endl;
 //========================================================================================================================
 //connect PIs oracle and miter
     vector<string> connect_orac_cam;
@@ -546,7 +556,7 @@ void MiterSolver::buildmiter()
         oracPONodes2grab.push_back(newPO);
     }
 //========================================================================================================================
-//nodes2grab now includes miterCBindex, camPIndex, oracPOndex 
+//nodes2grab now includes miterCBindex, camPIndex, OracPOndex 
     nodes2grab = camPIndex; 
     nodes2grab += miterCBindex;
     nodes2grab += oracPONodes2grab;
@@ -611,56 +621,98 @@ void IncreSolver::grab(vector<int> &list, map<int,string> &target)
 void AddonSolver::addconstrains()
 {
     cout << "call addconstrains" << endl;
+//========================================================================================================================
+//create 2 duplication of original cam circuit
+int correction1 = cktTotVarNum;
+int correction2 = cktTotVarNum + camVarNum;
+vector<string> dupCkt1 =  duplicateCircuit(camCNFile, correction1);
+vector<string> dupCkt2 =  duplicateCircuit(camCNFile, correction2);
+dupCkt1.insert(dupCkt1.begin(), "c this is 1st duplication\n");
+dupCkt2.insert(dupCkt2.begin(), "c this is 2nd duplication\n");
+cktTotVarNum = correction2 + camVarNum; // update the total variable number
+//========================================================================================================================
+//connect CB of the two new duplications to miter
+vector<string> connect_CB1 = connectNets(camCBindex, correction1); 
+vector<string> connect_CB2 = connectNets(camCB2index, correction1); 
+connect_CB1.insert(connect_CB1.begin(), "c connect CB for 1st\n");
+connect_CB2.insert(connect_CB2.begin(), "c connect CB fot 2nd\n");
+get_index(camCBindex, correction1, addon_CB1);
+get_index(camCBindex, correction2, addon_CB2);
+get_index(camPIndex, correction1, addon_PI1);
+get_index(camPIndex, correction2, addon_PI2);
+get_index(camPOindex, correction1, addon_PO1);
+get_index(camPOindex, correction2, addon_PO2);
+
+//========================================================================================================================
+//assign new temp PI vector to new duplicated circuit
+vector<string> assign_PI1 = assign_value(PItemp, addon_PI1);
+vector<string> assign_PI2 = assign_value(PItemp, addon_PI2);
+assign_PI1.insert(assign_PI1.begin(), "c assign PI for 1st\n");
+assign_PI2.insert(assign_PI2.begin(), "c assign PI for 2nd\n");
+//========================================================================================================================
+//assign new temp PO vector to new duplicated circuit
+cout << "camVarNum = " << camVarNum << endl; 
+vector<string> assign_PO1 = assign_value(POtemp, addon_PO1);
+vector<string> assign_PO2 = assign_value(POtemp, addon_PO2);
+assign_PO1.insert(assign_PO1.begin(), "c assign PO for 1st\n");
+assign_PO2.insert(assign_PO2.begin(), "c assign PO for 2nd\n");
+//========================================================================================================================
+//merge all
+dupCkt1 += connect_CB1 + assign_PI1 + assign_PO1;
+dupCkt2 += connect_CB2 + assign_PI2 + assign_PO2;
+vector<string> addon = dupCkt1 + dupCkt2;
+print_vector(addon, target_cnf);
 }
 
+void AddonSolver::get_index(vector<int> &source, int correction, vector<int> &target)
+{
+    for(vector<int>::iterator index = source.begin(); index != source.end(); ++index)
+    {
+        target.push_back(*index + correction);
+    }
+}
+
+vector<string> AddonSolver::assign_value(map<int, string> &value_map, vector<int> what)
+{
+    vector<string> result;
+    vector<int>::iterator position = what.begin();
+    for(map<int, string>::iterator index = value_map.begin(); index != value_map.end(); ++index)
+    {
+        if(index->second == "1") result.push_back(tostring(*position) + " 0\n");
+        else if(index->second == "0") result.push_back("-" + tostring(*position) + " 0\n");
+        position++;
+    }
+    return result;
+}
 void AddonSolver::print_solution(const char * path)
 {
 
     ofstream outfile(path);
     outfile << "------The found PI vector that differentiate CB" << endl;
-    for(map<int, string>::iterator index = CB1temp.begin(); index != CB1temp.end(); ++index)
-    {
-        outfile << index->first << "\t";
-    }
-
-    outfile << endl;
-    for(map<int, string>::iterator value = CB1temp.begin(); value != CB1temp.end(); ++value)
-    {
-        outfile << value->second << "\t";
-    }    
+    print_map(CB1temp, outfile);    
     outfile << "\n------with\n";
-    for(map<int, string>::iterator index = CB2temp.begin(); index != CB2temp.end(); ++index)
-    {
-        outfile << index->first << "\t";
-    }
-    outfile << endl;
-    for(map<int, string>::iterator value = CB2temp.begin(); value != CB2temp.end(); ++value)
-    {
-        outfile << value->second << "\t";
-    }  
+    print_map(CB2temp, outfile);  
     outfile << "\n-----is\n"; 
-    for(map<int, string>::iterator index = PItemp.begin(); index != PItemp.end(); ++index)
-    {
-        outfile << index->first << "\t";
-    }
-    outfile << endl;
-    for(map<int, string>::iterator value = PItemp.begin(); value != PItemp.end(); ++value)
-    {
-        outfile << value->second << "\t";
-    }
-    outfile << endl;
+    print_map(PItemp, outfile);
     outfile << "The corresponding primary outputs are:" << endl;
-     for(map<int, string>::iterator index = POtemp.begin(); index != POtemp.end(); ++index)
-    {
-        outfile << index->first << "\t";
-    }
-    outfile << endl;
-    for(map<int, string>::iterator value = POtemp.begin(); value != POtemp.end(); ++value)
-    {
-        outfile << value->second << "\t";
-    }    
+    print_map(POtemp, outfile);    
     
 }
+
+void AddonSolver::print_map(map<int,string> &container, ofstream &outfile)
+{
+    for(map<int, string>::iterator index = container.begin(); index != container.end(); ++index)
+    {
+        outfile << index->first << "\t";
+    }
+    outfile << endl;
+    for(map<int, string>::iterator value = container.begin(); value != container.end(); ++value)
+    {
+        outfile << value->second << "\t";
+    }
+    outfile << endl; 
+}
+
 void AddonSolver::solve()   // used to solve both miter and addons
 {
     ofstream outfile(Solver_solution);
