@@ -62,12 +62,11 @@ protected:
 
 protected:
 	inline vector<string> duplicateCircuit(vector<string> cnFile, int start_index);		// tools: duplicate a circuit based on "cnFile", index start from "start_index"
-	inline vector<string> assign_value(map<int, string> &value_map, vector<int> what);	// tool: use "value_map" value to assign elements in "what"
+	inline vector<string> assign_value(map<int, string> &value_map, vector<int> what);	// tools: use "value_map" value to assign elements in "what"
 	inline vector<string> connectNets(vector<int> &piVec, int start_index);				// tools  using known start_index to connect two circuit
 	inline void grab(vector<int> &list, map<int,string> &target);						// tools: searching elements in list in solution list(S.model[], index left shifted by 1), assign into target
 	inline void grabnodes();															// main: obtain values from "S"  
-	inline void freeze();																// main: used to setFrozen for some variables, so they will not be removed during simplification
-	inline vector<int> get_index(vector<int> source, int correction);					// tool: used to get duplication's PI, PO, CB index. based on "source", calculate with "correction", store in "target" 
+	inline vector<int> get_index(vector<int> source, int correction);					// tools: used to get duplication's PI, PO, CB index. based on "source", calculate with "correction", store in "target" 
 
 };
 
@@ -97,7 +96,7 @@ private:
 	void genCameCNF(char const * CamePath);														// main: parse "CamePath" and generate CNF
 	void genCameCNF(char const * CamePath, string Muxstyle);									// main: used for later
 
-	vector<string> connectPO_xor(vector<int> &posIndex, int &camVarNum, int &xorInt);			// tool: connect POs using xor, used only for two duplicated circuit
+	vector<string> connectPO_xor(vector<int> &posIndex, int &camVarNum, int &xorInt);			// tools: connect POs using xor, used only for two duplicated circuit
 };
 
 
@@ -117,6 +116,7 @@ private:
 	void case_1();																					// main: build circuit, for the case that need more than one duplication
 	void case_2();																					// main: build circuit, for the case that only one duplication needed
 	void solve_it();																				// main: used to solve and find finalSolution
+	void freeze();																					// main: used to setFrozen for camCBindex, so they will not be removed during simplification 
 
 };
 
@@ -128,11 +128,12 @@ public:
 	AddonSolver();											
 	~AddonSolver();
 	void start_solving();																// main: start a iteration
-	inline void print_solution(const char * path);										// tool: in current iteration, print out solution into "path"
+	inline void print_solution(const char * path);										// tools: in current iteration, print out solution into "path"
 
 
 private:
-	inline void print_map(map<int,string> &container, ofstream &outfile);				// tool: export content of "container" to "outfile"
+	inline void freeze();																// main: used to setFrozen for node2grab, so they will not be removed during simplification
+	inline void print_map(map<int,string> &container, ofstream &outfile);				// tools: export content of "container" to "outfile"
 	inline void addconstrains();														// main: based on solution, generate new addon circuit
 	inline void solve();																// main: used to solve both miter and addconstrains
 };

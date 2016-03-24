@@ -21,7 +21,7 @@ using namespace std;
 
 
 
-lbool IncreSolver::ret = l_True;
+lbool IncreSolver::ret = l_False;
 
 const char *  IncreSolver::Orac_file_path;
 const char * IncreSolver::Came_file_path;
@@ -51,12 +51,12 @@ vector<map<int, string> > IncreSolver::OracPOs;   // store all temp POs
 //implementation of IncreSolver
 IncreSolver::IncreSolver()
 {
-	cout << "IncreSolver is created" << endl;
+//	cout << "IncreSolver is created" << endl;
 }
 
 IncreSolver::~IncreSolver()
 {
-	cout << "IncreSolver is deleted" << endl;
+//	cout << "IncreSolver is deleted" << endl;
 }
 
 vector<string> IncreSolver::assign_value(map<int, string> &value_map, vector<int> what)
@@ -82,18 +82,6 @@ vector<int> IncreSolver::get_index(vector<int> source, int correction)
     return target;
 }
 
-void IncreSolver::freeze()
-{
-    static int already_frozen = 0;
-    if(already_frozen == 0)
-    {
-        for(vector<int>::iterator index = nodes2grab.begin(); index != nodes2grab.end(); ++index)
-        {
-            S.setFrozen(*index - 1, true);
-        }        
-    }
-
-}
 
 vector<string> IncreSolver::duplicateCircuit(vector<string> cnFile, int start_index)
 {
@@ -530,7 +518,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
         XOR_outputs.push_back(XOR_index);
     }
     vector<string> OR_connection = transGATE(2, XOR_outputs, orIndex);
-    OR_connection.push_back(tostring(orIndex) + " 0\n");
+//    OR_connection.push_back(tostring(orIndex) + " 0\n");
     vector<string> final_miter;
     final_miter = cnFile_POconnected + OR_connection;
 
@@ -615,7 +603,8 @@ void MiterSolver::buildmiter()
 //nodes2grab now includes miterCBindex, camPIndex, OracPOndex 
     nodes2grab = camPIndex; 
     nodes2grab += miterCBindex;
-    nodes2grab += oracPONodes2grab;
+    nodes2grab += OracPOndex;
+    nodes2grab.push_back(miterOutIndex);
     print_vector(camPIndex, "camPIndex");
     print_vector(camCBindex, "camCBindex");
     print_vector(miterCBindex, "miterCBindex");
@@ -631,11 +620,24 @@ void MiterSolver::buildmiter()
 
 AddonSolver::AddonSolver():IncreSolver()
 {
-    cout << "AddonSolver created" << endl;
+//    cout << "AddonSolver created" << endl;
 }
 AddonSolver::~AddonSolver()
 {
-    cout << "AddonSolver is deleted" << endl;
+//    cout << "AddonSolver is deleted" << endl;
+}
+
+void AddonSolver::freeze()
+{
+    static int already_frozen = 0;
+    if(already_frozen == 0)
+    {
+        for(vector<int>::iterator index = nodes2grab.begin(); index != nodes2grab.end(); ++index)
+        {
+            S.setFrozen(*index - 1, true);
+        }        
+    }
+
 }
 
 void AddonSolver::start_solving()
@@ -643,7 +645,7 @@ void AddonSolver::start_solving()
     solve();        
     grabnodes();
     print_solution("iteration_solu");
-//    addconstrains();
+    addconstrains();
 }
 
 
@@ -653,10 +655,6 @@ void AddonSolver::print_solution(const char * path)
     ofstream outfile(path);
     outfile << "------The found PI vector that differentiate CB" << endl;
     cout << "------The found PI vector that differentiate CB" << endl;
-    print_map(CB1temp, outfile);    
-    outfile << "\n------with\n";
-    cout << "\n------with\n";
-    print_map(CB2temp, outfile);  
     outfile << "\n-----is\n";
     cout << "\n-----is\n";
     print_map(PItemp, outfile);
@@ -687,32 +685,22 @@ void AddonSolver::print_map(map<int,string> &container, ofstream &outfile)
 void AddonSolver::solve()   // used to solve both miter and addons
 {
     ofstream outfile(Solver_solution);
-    cout << "open " << Solver_solution << endl;
-    cout << "call solve" << endl;
     gzFile in = gzopen(target_cnf, "rb");
-    cout << "parse in " << target_cnf <<endl;
     parse_DIMACS(in, S);
     gzclose(in);
-    cout << "freeze" << endl;
-//    for(vector<int>::iterator index = nodes2grab.begin(); index != nodes2grab.end(); ++index)
-//    {
-//        S.setFrozen(*index - 1, true);
-//    } 
-    cout << "eliminated" << endl;
+    freeze();
     S.eliminate(true);
-    cout << "check if OK" << endl;
     if(!S.okay())
     {
         outfile << "UNSAT\n" << endl;
         cout << "UNSAT" << endl;
     }
     cout << "start solving" << endl;
-    //bool myRes = S.solve(mkLit(miterOutIndex - 1, false));
-    //if(myRes == true)   ret = l_True;
-    //else ret = l_False; 
 
-    vec<Lit> dummy;
-    ret = S.solveLimited(dummy);
+    bool myRes = S.solve(mkLit(miterOutIndex - 1, false));
+    if(myRes == true)   ret = l_True;
+    else ret = l_False; 
+
     if(ret == l_True)
     {
         outfile << "SAT" << endl;
@@ -736,47 +724,51 @@ void AddonSolver::solve()   // used to solve both miter and addons
 
 void AddonSolver::addconstrains()
 {
-    cout << "call addconstrains" << endl;
-//========================================================================================================================
-//create 2 duplication of original cam circuit
-int correction1 = cktTotVarNum;
-int correction2 = cktTotVarNum + camVarNum;
-vector<string> dupCkt1 =  duplicateCircuit(camCNFile, correction1);
-vector<string> dupCkt2 =  duplicateCircuit(camCNFile, correction2);
-dupCkt1.insert(dupCkt1.begin(), "c this is 1st duplication\n");
-dupCkt2.insert(dupCkt2.begin(), "c this is 2nd duplication\n");
-cktTotVarNum = correction2 + camVarNum; // update the total variable number
-//========================================================================================================================
-//connect CB of the two new duplications to miter
-vector<string> connect_CB1 = connectNets(camCBindex, correction1); 
-vector<string> connect_CB2 = connectNets(camCB2index, correction1); 
-connect_CB1.insert(connect_CB1.begin(), "c connect CB for 1st\n");
-connect_CB2.insert(connect_CB2.begin(), "c connect CB fot 2nd\n");
-addon_CB1 = get_index(camCBindex, correction1);
-addon_CB2 = get_index(camCBindex, correction2);
-addon_PI1 = get_index(camPIndex, correction1);
-addon_PI2 = get_index(camPIndex, correction2);
-addon_PO1 = get_index(camPOindex, correction1);
-addon_PO2 = get_index(camPOindex, correction2);
+    if(ret == l_True)
+    {
+        cout << "call addconstrains" << endl;
+        //========================================================================================================================
+        //create 2 duplication of original cam circuit
+        int correction1 = cktTotVarNum;
+        int correction2 = cktTotVarNum + camVarNum;
+        vector<string> dupCkt1 =  duplicateCircuit(camCNFile, correction1);
+        vector<string> dupCkt2 =  duplicateCircuit(camCNFile, correction2);
+        dupCkt1.insert(dupCkt1.begin(), "c this is 1st duplication\n");
+        dupCkt2.insert(dupCkt2.begin(), "c this is 2nd duplication\n");
+        cktTotVarNum = correction2 + camVarNum; // update the total variable number
+        //========================================================================================================================
+        //connect CB of the two new duplications to miter
+        vector<string> connect_CB1 = connectNets(camCBindex, correction1); 
+        vector<string> connect_CB2 = connectNets(camCB2index, correction1); 
+        connect_CB1.insert(connect_CB1.begin(), "c connect CB for 1st\n");
+        connect_CB2.insert(connect_CB2.begin(), "c connect CB fot 2nd\n");
+        addon_CB1 = get_index(camCBindex, correction1);
+        addon_CB2 = get_index(camCBindex, correction2);
+        addon_PI1 = get_index(camPIndex, correction1);
+        addon_PI2 = get_index(camPIndex, correction2);
+        addon_PO1 = get_index(camPOindex, correction1);
+        addon_PO2 = get_index(camPOindex, correction2);
 
-//========================================================================================================================
-//assign new temp PI vector to new duplicated circuit
-vector<string> assign_PI1 = assign_value(PItemp, addon_PI1);
-vector<string> assign_PI2 = assign_value(PItemp, addon_PI2);
-assign_PI1.insert(assign_PI1.begin(), "c assign PI for 1st\n");
-assign_PI2.insert(assign_PI2.begin(), "c assign PI for 2nd\n");
-//========================================================================================================================
-//assign new temp PO vector to new duplicated circuit
-vector<string> assign_PO1 = assign_value(POtemp, addon_PO1);
-vector<string> assign_PO2 = assign_value(POtemp, addon_PO2);
-assign_PO1.insert(assign_PO1.begin(), "c assign PO for 1st\n");
-assign_PO2.insert(assign_PO2.begin(), "c assign PO for 2nd\n");
-//========================================================================================================================
-//merge all
-dupCkt1 += connect_CB1 + assign_PI1 + assign_PO1;
-dupCkt2 += connect_CB2 + assign_PI2 + assign_PO2;
-vector<string> addon = dupCkt1 + dupCkt2;
-print_vector(addon, target_cnf);
+        //========================================================================================================================
+        //assign new temp PI vector to new duplicated circuit
+        vector<string> assign_PI1 = assign_value(PItemp, addon_PI1);
+        vector<string> assign_PI2 = assign_value(PItemp, addon_PI2);
+        assign_PI1.insert(assign_PI1.begin(), "c assign PI for 1st\n");
+        assign_PI2.insert(assign_PI2.begin(), "c assign PI for 2nd\n");
+        //========================================================================================================================
+        //assign new temp PO vector to new duplicated circuit
+        vector<string> assign_PO1 = assign_value(POtemp, addon_PO1);
+        vector<string> assign_PO2 = assign_value(POtemp, addon_PO2);
+        assign_PO1.insert(assign_PO1.begin(), "c assign PO for 1st\n");
+        assign_PO2.insert(assign_PO2.begin(), "c assign PO for 2nd\n");
+        //========================================================================================================================
+        //merge all
+        dupCkt1 += connect_CB1 + assign_PI1 + assign_PO1;
+        dupCkt2 += connect_CB2 + assign_PI2 + assign_PO2;
+        vector<string> addon = dupCkt1 + dupCkt2;
+        print_vector(addon, target_cnf);
+    }
+
 }
 
 
@@ -797,7 +789,13 @@ SoluFinder::~SoluFinder()
 {
     cout << " delete a SoluFinder" << endl;
 }
-
+void SoluFinder::freeze()
+{
+    for(vector<int>::iterator index = camCBindex.begin(); index != camCBindex.end(); ++index)
+    {
+        S.setFrozen(*index - 1, true);
+    }            
+}
 void SoluFinder::find_solu()
 {
     cout << "call find_solu" << endl;
@@ -806,7 +804,7 @@ void SoluFinder::find_solu()
 
     if(num2dup > 1) case_1();
     else case_2();
-    string cmmtLine1 = "c This file is generated by Solufinder\n";
+    string cmmtLine1 = "c This file is generated by SoluFinder\n";
     string cmmtLine2 = "c Generated on " + get_localtime() + "\n";
     string firstLine = "p cnf " + tostring(totVarNum) + " " + tostring(clauseNum) + "\n";
     finalCNF.insert(finalCNF.begin(), firstLine);
@@ -819,14 +817,61 @@ void SoluFinder::case_1()
 {
     cout << "call case_1" << endl;
     // generate duplications
-    for(int iteration = 0; iteration < num2dup; iteration++)
+    vector<vector<string> > tmpCnfLs;
+    for(int iteration = 0; iteration < num2dup - 1; iteration++)
     {
-        finalCNF += duplicateCircuit(camCNFile, iteration*num2dup);
-        if(iteration != 0) finalCNF += connectNets(camCBindex, iteration*num2dup);
-        vector<int> PI_index = get_index(camPIndex, iteration*num2dup);
-        vector<int> PO_index = get_index(camPOindex, iteration*num2dup);
-        finalCNF += assign_value(OracPIs.at(iteration), PI_index);
-        finalCNF += assign_value(OracPOs.at(iteration), PO_index);
+
+        tmpCnfLs.push_back(duplicateCircuit(camCNFile, (iteration + 1)*num2dup));
+//        if(iteration != 0) finalCNF += connectNets(camCBindex, iteration*num2dup);
+//        vector<int> PI_index = get_index(camPIndex, iteration*num2dup);
+//        vector<int> PO_index = get_index(camPOindex, iteration*num2dup);
+//        finalCNF += assign_value(OracPIs.at(iteration), PI_index);
+//        finalCNF += assign_value(OracPOs.at(iteration), PO_index);
+    }
+    for(vector<int>::iterator index = camCBindex.begin(); index != camCBindex.end(); ++index)
+    {
+        int baseCBInt = camCBindex.at(0);
+        for(int j = 0; j < num2dup - 1; j++)
+        {
+            string line1 = tostring(baseCBInt) + " -" + tostring(baseCBInt + (j + 1) * camVarNum) + " 0\n";
+            tmpCnfLs.at(j).push_back(line1);
+            string line2 = tostring(baseCBInt) + " " + tostring(baseCBInt + (j + 1) * camVarNum) + " 0\n";
+            tmpCnfLs.at(j).push_back(line2);
+        }
+
+    }
+
+    tmpCnfLs.insert(tmpCnfLs.begin(), camCNFile);
+
+    for(int i = 0; i < num2dup; i++)
+    {
+        for(map<int, string>::iterator j = OracPIs.at(i).begin(); j != OracPIs.at(i).end(); ++j)
+        {
+            if(j->second == "1")
+            {
+                tmpCnfLs.at(i).push_back(tostring(j->first + i * camVarNum) + " 0\n");
+            }
+            else if(j->second == "0")
+            {
+                tmpCnfLs.at(i).push_back("-" + tostring(j->first + i * camVarNum) + " 0\n");
+            }
+        }
+        for(map<int, string>::iterator k = OracPOs.at(i).begin(); k != OracPOs.at(i).end(); ++k)
+        {
+            if(k->second == "1")
+            {
+                tmpCnfLs.at(i).push_back(tostring(k->first + i * camVarNum) + " 0\n");
+            }
+            else if(k->second == "0")
+            {
+                tmpCnfLs.at(i).push_back("-" + tostring(k->first + i * camVarNum) + " 0\n");
+            }
+        }
+    }
+
+    for(vector<vector<string> >::iterator CNF = tmpCnfLs.begin(); CNF != tmpCnfLs.end(); ++CNF)
+    {
+        finalCNF += *CNF;
     }
     totVarNum = num2dup * camVarNum;
     clauseNum = finalCNF.size();
@@ -849,6 +894,7 @@ void SoluFinder::solve_it()
     gzFile in = gzopen("finalSolu.cnf", "rb");
     parse_DIMACS(in, S_final);
     gzclose(in);
+    freeze();
     S_final.eliminate(true);
     if(!S_final.okay())
     {
@@ -856,9 +902,9 @@ void SoluFinder::solve_it()
         cout << "UNSAT" << endl;
     }
     
-    bool myRes = S_final.solve();
-    if(myRes == true) ret = l_True;
-    else ret = l_False;
+    vec<Lit> dummy;
+    lbool ret = S_final.solveLimited(dummy);
+
     cout << "finishing solving " << endl;
     if(ret == l_True)
     {

@@ -39,15 +39,19 @@ using namespace std;
 //static Solver* solver;
 int main(int argc, char* argv[])
 {
-
+	IncreSolver SLV;
 	const char * Orac = argv[1];
 	const char * Cam = argv[2];
     MiterSolver Miter(Orac, Cam);
     Miter.buildmiter();
-    AddonSolver *addon = new AddonSolver;
-    addon->start_solving();
-    delete addon;
-
-
+    do
+    {
+     	AddonSolver Addon;
+    	Addon.start_solving();   	
+    }
+    while(SLV.ret == l_True);
+    SoluFinder finder;
+    finder.find_solu();
+    cout << "finished" << endl;
     return 0;
 }
