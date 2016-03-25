@@ -32,8 +32,8 @@ SimpSolver IncreSolver::S;
 SimpSolver IncreSolver::S_final;
 
 int IncreSolver::miterOutIndex = 0;
-int IncreSolver::cktTotVarNum = 0;                   // number of wire including miter and oracle circuit 
-int IncreSolver::camVarNum = 0;                      // total number of wires + inputs + CBs + outputs in the original cam ckt   
+int IncreSolver::cktTotVarNum = 0;                // number of wire including miter and oracle circuit 
+int IncreSolver::camVarNum = 0;                   // total number of wires + inputs + CBs + outputs in the original cam ckt   
 
 vector<int> IncreSolver::nodes2grab;
 vector<int> IncreSolver::camCBindex;              // CB expect duplicated circuit
@@ -43,6 +43,9 @@ vector<int> IncreSolver::camPIndex;               // miter first circuit's PI, a
 vector<int> IncreSolver::camPOindex;
 vector<int> IncreSolver::OracPOndex;
 vector<string> IncreSolver::camCNFile;            // original Camouflaged circuit CNF
+
+map<int, string> IncreSolver::indexVarDict;       // store map of index to netname
+map<string, int> IncreSolver::varIndexDict;       // store map of netname to index
 
 
 vector<map<int, string> > IncreSolver::OracPIs;   // store all temp PIs 
@@ -126,7 +129,6 @@ vector<string> IncreSolver::connectNets(vector<int> &piVec, int start_index)
 
 void IncreSolver::grabnodes()     
 {
-    cout << "call grabnodes" << endl;
     if(ret == l_True)
     {
 
@@ -156,14 +158,12 @@ void IncreSolver::grab(vector<int> &list, map<int,string> &target)
 //implementation of MiterSolver
 MiterSolver::MiterSolver(char const * path1, char const * path2)
 {
-    cout << "MiterSolver is created" <<endl;
     Orac_file_path = path1;
     Came_file_path = path2;
 }
 
 MiterSolver::~MiterSolver()
 {
-    cout << "MiterSolver is deleted" << endl;
 }
 
 vector<string> MiterSolver::connectPO_xor(vector<int> &posIndex, int &camVarNum, int &xorInt)
@@ -200,7 +200,7 @@ void MiterSolver::genOracCNF(char const * OracPath, int start)
 
     // 1.1 Convert the original circuit to CNF format
     vector<vector<int> > inputs;
-    map<string, int> varIndexDict;      //use name to find index, so string should be key
+    map<string, int> varIndexDict;      
     int varIndex = start;
     vector<string> cnFile;
     vector<int> posIndex;
@@ -210,7 +210,7 @@ void MiterSolver::genOracCNF(char const * OracPath, int start)
     int gateCnt = 0;
     int varNum = 0;
     int clauseNum = 0;
-    vector<string> cnfLine;     //why we need cnfLines and cnfLine???
+    vector<string> cnfLine;     
     cnfLine.push_back("c oracle circuit:\n");
     for(vector<string>::iterator iter = Vlines.begin(); iter != Vlines.end(); ++iter)
     {
@@ -289,8 +289,6 @@ void MiterSolver::genOracCNF(char const * OracPath, int start)
                 strip_all(gate," ");
                 strip_all(gate,"\n");
                 strip_all(gate,"\t");
-//                cout << "gate is: " << gate << endl;
-//                cout << "Gate type is " << gate << endl;
             }
             else
             {
@@ -325,10 +323,6 @@ void MiterSolver::genOracCNF(char const * OracPath, int start)
     string cmmtline2 = "c Generated on " + get_localtime() + " \n";
     clauseNum += inputs.front().size();
     string firstLine = "p cnf " + tostring(varNum) + " " + tostring(clauseNum - 1)  + " \n";
-    //cnFile.insert(cnFile.begin(), firstLine);
-    //cnFile.insert(cnFile.begin(), cmmtline2);
-    //cnFile.insert(cnFile.begin(), cmmtline1);
-
 
     OracPIndex = inputs.front();
     OracPOndex = posIndex;
@@ -351,8 +345,6 @@ void MiterSolver::genCameCNF(char const * CamePath)
     vector<string> POs;
     vector<string> wires;
     vector<vector<int> > inputs;
-    map<string, int> intVarDict;
-    map<string, int> varIndexDict;
     map<string, int> gateTypeDict;
     vector<string> cnFile;
     vector<int> posIndex;
@@ -387,6 +379,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 strip_all(*pi, "[");
                 strip_all(*pi, "]");
                 varIndexDict.insert(std::pair<string, int>(*pi, varIndex));
+                indexVarDict.insert(std::pair<int, string>(varIndex, *pi));
 //                cout << *pi << " = " << varIndex << endl;
                 tmpPis.push_back(varIndex);
                 varIndex++;                
@@ -409,6 +402,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
 //              cout << *po << endl;
                 posIndex.push_back(varIndex);
                 varIndexDict.insert(std::pair<string,int>(*po, varIndex));
+                indexVarDict.insert(std::pair<int, string>(varIndex, *po));
                 varIndex++;             
             }
         }
@@ -427,6 +421,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 strip_all(*w, "\\t");
 //              cout << *w << endl;
                 varIndexDict.insert(std::pair<string,int>(*w, varIndex));
+                indexVarDict.insert(std::pair<int, string>(varIndex, *w));
                 varIndex++;             
             }
         }
@@ -530,10 +525,6 @@ void MiterSolver::genCameCNF(char const * CamePath)
     string cmmtline1 = "c This file is generated by genCameCNF\n";
     string cmmtline2 = "c Generated on " + get_localtime();
     string firstLine = "p cnf " + tostring(varNum) + " " + tostring(clauseNum) + " \n";
-//    final_miter.insert(final_miter.begin(), firstLine);
-//    final_miter.insert(final_miter.begin(), cmmtline2);
-//    final_miter.insert(final_miter.begin(), cmmtline1);
-
 
     baseCnfMtrLs = final_miter;
     inputsInt = inputs;
@@ -654,13 +645,13 @@ void AddonSolver::print_solution(const char * path)
 
     ofstream outfile(path);
     outfile << "------The found PI vector that differentiate CB" << endl;
-    cout << "------The found PI vector that differentiate CB" << endl;
+//    cout << "------The found PI vector that differentiate CB" << endl;
     outfile << "\n-----is\n";
-    cout << "\n-----is\n";
-    print_map(PItemp, outfile);
+//    cout << "\n-----is\n";
+//    print_map(PItemp, outfile);
     outfile << "The corresponding primary outputs are:" << endl;
-    cout << "The corresponding primary outputs are:" << endl;
-    print_map(POtemp, outfile);    
+//    cout << "The corresponding primary outputs are:" << endl;
+//    print_map(POtemp, outfile);    
     
 }
 
@@ -693,9 +684,7 @@ void AddonSolver::solve()   // used to solve both miter and addons
     if(!S.okay())
     {
         outfile << "UNSAT\n" << endl;
-        cout << "UNSAT" << endl;
     }
-    cout << "start solving" << endl;
 
     bool myRes = S.solve(mkLit(miterOutIndex - 1, false));
     if(myRes == true)   ret = l_True;
@@ -704,7 +693,6 @@ void AddonSolver::solve()   // used to solve both miter and addons
     if(ret == l_True)
     {
         outfile << "SAT" << endl;
-        cout << "SAT" << endl;
         for(int i = 0; i < S.nVars(); i++)
         {
             if(S.model[i] != l_Undef)
@@ -726,7 +714,6 @@ void AddonSolver::addconstrains()
 {
     if(ret == l_True)
     {
-        cout << "call addconstrains" << endl;
         //========================================================================================================================
         //create 2 duplication of original cam circuit
         int correction1 = cktTotVarNum;
@@ -766,6 +753,13 @@ void AddonSolver::addconstrains()
         dupCkt1 += connect_CB1 + assign_PI1 + assign_PO1;
         dupCkt2 += connect_CB2 + assign_PI2 + assign_PO2;
         vector<string> addon = dupCkt1 + dupCkt2;
+        int clauseNum = addon.size() - 8;
+        string cmmtline1 = "c this file is generated by AddonSolver::addconstrains\n";
+        string cmmtline2 = "c generated on " + get_localtime();
+        string firstLine = "p cnf " + tostring(cktTotVarNum) + " " + tostring(clauseNum) + "\n";
+        addon.insert(addon.begin(), firstLine);
+        addon.insert(addon.begin(), cmmtline2);
+        addon.insert(addon.begin(), cmmtline1); 
         print_vector(addon, target_cnf);
     }
 
@@ -782,12 +776,10 @@ void AddonSolver::addconstrains()
 //implementation of soluFinder
 SoluFinder::SoluFinder()
 {
-    cout << " create a SoluFinder" <<endl;
 }
 
 SoluFinder::~SoluFinder()
 {
-    cout << " delete a SoluFinder" << endl;
 }
 void SoluFinder::freeze()
 {
@@ -798,7 +790,6 @@ void SoluFinder::freeze()
 }
 void SoluFinder::find_solu()
 {
-    cout << "call find_solu" << endl;
     num2dup = OracPIs.size();
     totVarNum = num2dup*camVarNum;
 
@@ -812,11 +803,10 @@ void SoluFinder::find_solu()
     finalCNF.insert(finalCNF.begin(), cmmtLine2);
     print_vector(finalCNF, "finalSolu.cnf");
     solve_it();
+    print_solution();
 }
 void SoluFinder::case_1()
 {
-    cout << "call case_1" << endl;
-    // generate duplications
     vector<vector<string> > tmpCnfLs;
     for(int iteration = 0; iteration < num2dup; iteration++)
     {
@@ -836,60 +826,13 @@ void SoluFinder::case_1()
         assign_PO.insert(assign_PO.begin(), "c this is assign PO\n");
         finalCNF+=duplication  + assign_PI + assign_PO;
     }
-/*
-    for(vector<int>::iterator index = camCBindex.begin(); index != camCBindex.end(); ++index)
-    {
-        int baseCBInt = camCBindex.at(0);
-        for(int j = 0; j < num2dup - 1; j++)
-        {
-            string line1 = tostring(baseCBInt) + " -" + tostring(baseCBInt + (j + 1) * camVarNum) + " 0\n";
-            tmpCnfLs.at(j).push_back(line1);
-            string line2 = tostring(baseCBInt) + " " + tostring(baseCBInt + (j + 1) * camVarNum) + " 0\n";
-            tmpCnfLs.at(j).push_back(line2);
-        }
 
-    }
-
-    tmpCnfLs.insert(tmpCnfLs.begin(), camCNFile);
-
-    for(int i = 0; i < num2dup; i++)
-    {
-        for(map<int, string>::iterator j = OracPIs.at(i).begin(); j != OracPIs.at(i).end(); ++j)
-        {
-            if(j->second == "1")
-            {
-                tmpCnfLs.at(i).push_back(tostring(j->first + i * camVarNum) + " 0\n");
-            }
-            else if(j->second == "0")
-            {
-                tmpCnfLs.at(i).push_back("-" + tostring(j->first + i * camVarNum) + " 0\n");
-            }
-        }
-        for(map<int, string>::iterator k = OracPOs.at(i).begin(); k != OracPOs.at(i).end(); ++k)
-        {
-            if(k->second == "1")
-            {
-                tmpCnfLs.at(i).push_back(tostring(k->first + i * camVarNum) + " 0\n");
-            }
-            else if(k->second == "0")
-            {
-                tmpCnfLs.at(i).push_back("-" + tostring(k->first + i * camVarNum) + " 0\n");
-            }
-        }
-    }
-
-    for(vector<vector<string> >::iterator CNF = tmpCnfLs.begin(); CNF != tmpCnfLs.end(); ++CNF)
-    {
-        finalCNF += *CNF;
-    }
-*/
     totVarNum = num2dup * camVarNum;
-    clauseNum = finalCNF.size() - 3*num2dup - num2dup - 1;
-
+    clauseNum = finalCNF.size() - 3*num2dup - num2dup + 1;
 }
+
 void SoluFinder::case_2()
 {
-    cout << "call case_2" << endl;
     vector<string> duplication = camCNFile;
     vector<string> assign_PI = assign_value(OracPIs.at(0), camPIndex);
     vector<string> assign_PO = assign_value(OracPOs.at(0), camPOindex);
@@ -913,13 +856,11 @@ void SoluFinder::solve_it()
     if(!S_final.okay())
     {
         outfile << "UNSAT\n" << endl;
-        cout << "UNSAT" << endl;
     }
     
     vec<Lit> dummy;
     lbool ret = S_final.solveLimited(dummy);
 
-    cout << "finishing solving " << endl;
     if(ret == l_True)
     {
         outfile << "SAT" << endl;
@@ -939,4 +880,28 @@ void SoluFinder::solve_it()
     else if(ret == l_False) outfile << "UNSAT" << endl;
     else    outfile << "INDET" << endl;
     outfile.close();   
-}                                                                           
+} 
+
+void SoluFinder::print_solution()
+{
+    cout << "Solution is:" << endl;
+    for(vector<int>::iterator node = camCBindex.begin(); node != camCBindex.end(); ++node)
+    {
+        if(S_final.model[*node - 1] != l_Undef)
+        {
+            if(S_final.model[*node - 1] == l_True) Solution.insert(std::pair<int,string>(*node, "1"));
+            else Solution.insert(std::pair<int, string>(*node, "0"));
+        }
+    }
+    for(map<int, string>::iterator index = Solution.begin(); index != Solution.end(); ++index)
+    {
+        cout << indexVarDict[index->first] << "\t";
+    } 
+    cout << endl;
+    for(map<int, string>::iterator index = Solution.begin(); index != Solution.end(); ++index)
+    {
+        cout << index->second << "\t";
+    }
+    cout << endl;
+
+}                                                                          

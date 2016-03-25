@@ -60,7 +60,7 @@ SimpSolver::SimpSolver() :
   , elim_heap          (ElimLt(n_occ))
   , bwdsub_assigns     (0)
   , n_touched          (0)
-{   printf("a Solver is created\n");
+{   
     vec<Lit> dummy(1,lit_Undef);
     ca.extra_clause_field = true; // NOTE: must happen before allocating the dummy clause below.
     bwdsub_tmpunit        = ca.alloc(dummy);

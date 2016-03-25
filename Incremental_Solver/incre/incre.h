@@ -17,14 +17,17 @@ namespace Incre
 
 class IncreSolver
 {
+
 public:
 	static lbool ret;							// indicator: indicate whether this iteration in addon is sat or not
 	IncreSolver();
 	~IncreSolver();
-protected:
 	static const char  * Orac_file_path;		// input Oracle file path
+
+
+protected:
 	static const char  * Came_file_path;		// input Camouflage file path
-	static const char * Solver_solution;
+	static const char  * Solver_solution;		// addon solution path or final solution path
 	static const char  * target_cnf;			// output of buildmiter, input of solver, and output of addon
 
 	static vector<int> camPIndex;				// miter first circuit's PI, and also it the oracle's PI
@@ -34,12 +37,14 @@ protected:
 	static vector<int> miterCBindex;			// CB include duplicated circuit 
 	static vector<int> camCB2index;				// suplication's CB
 	static vector<int> nodes2grab;
+	static map<int, string> indexVarDict;		// store map of index to netname
+    static map<string, int> varIndexDict;		// store map of netname to index
 
 	map<int, string> CB1temp;			// store temporary (only in this iteration) original CB index->value 
 	map<int, string> CB2temp;			// store temporary (only in this iteration) duplication CB index->value
-	map<int, string> PItemp;				// store temporary (only in this iteration) oracle PI index->value
-	map<int, string> POtemp;				// store temporary (only in this iteration) oracle PO index->value
-	map<int, string> Solution;			// store solution for addon in this iteration
+	map<int, string> PItemp;			// store temporary (only in this iteration) miter PI index->value
+	map<int, string> POtemp;			// store temporary (only in this iteration) oracle PO index->value
+	map<int, string> Solution;			// store final Solution
 
 	vector<int> addon_CB1;				// store temporary (only in this iteration) first duplication CB index
 	vector<int> addon_CB2;				// store temporary (only in this iteration) second duplication CB index
@@ -59,6 +64,7 @@ protected:
 
 	static SimpSolver S;						// used for solve add on
 	static SimpSolver S_final;					// used for solve finalSolue
+	static SimpSolver S_general;				// general purpose solver
 
 protected:
 	inline vector<string> duplicateCircuit(vector<string> cnFile, int start_index);		// tools: duplicate a circuit based on "cnFile", index start from "start_index"
@@ -67,11 +73,13 @@ protected:
 	inline void grab(vector<int> &list, map<int,string> &target);						// tools: searching elements in list in solution list(S.model[], index left shifted by 1), assign into target
 	inline void grabnodes();															// main: obtain values from "S"  
 	inline vector<int> get_index(vector<int> source, int correction);					// tools: used to get duplication's PI, PO, CB index. based on "source", calculate with "correction", store in "target" 
+	inline map<string, int> netname_to_value(vector<string> nets);						// tools: used to search nets' value;
 
 };
 
 
-class MiterSolver : public IncreSolver {
+class MiterSolver : public IncreSolver 
+{
 
 private:
 	int OracVarNum;
@@ -88,8 +96,8 @@ private:
 	vector<int> OracPIndex;
 		
 public:
-	MiterSolver(char const * path1, char const * path2);										//constructor: initialize base class and milterSolver
-	~MiterSolver();																				//deconstructor
+	MiterSolver(char const * path1, char const * path2);										// constructor: initialize base class and milterSolver
+	~MiterSolver();																				// deconstructor
 	void buildmiter();																			// main: build CNF formatted miter and export to Miter_file_path
 private:
 	void genOracCNF(char const * OracPath, int start);											// main: parse "OracPath", generate CNF, index start on "start"
@@ -103,6 +111,7 @@ private:
 
 class SoluFinder : public IncreSolver 
 {
+
 public:
 	SoluFinder();
 	~SoluFinder();
@@ -113,16 +122,18 @@ private:
 	int totVarNum = 0;
 	int clauseNum = 0;
 	vector<string> finalCNF;
+
 	void case_1();																					// main: build circuit, for the case that need more than one duplication
 	void case_2();																					// main: build circuit, for the case that only one duplication needed
 	void solve_it();																				// main: used to solve and find finalSolution
 	void freeze();																					// main: used to setFrozen for camCBindex, so they will not be removed during simplification 
-
+	void print_solution();																			// main: used to print out final
 };
 
 
 
-class AddonSolver: public IncreSolver {
+class AddonSolver: public IncreSolver 
+{
 	
 public:
 	AddonSolver();											
@@ -139,13 +150,10 @@ private:
 };
 
 
-
-
-//=================================================================================================
-// Implementation of inline methods:
-
-
-
-
+class queryOrac: public IncreSolver
+{
+public:
+	virtual vector<map<string, bool> > getPOs(const char * path, vector<map<string, bool> > oracPIs);		// interface: provide oracPIs and oracle path, require oracPOs respect to each oracPIs
+};
 
 }
