@@ -6,7 +6,8 @@
 #include <iostream>
 #include <regex>
 
-
+#ifndef INCRE_INCRE_TOOLS_H
+#define INCRE_INCRE_TOOLS_H
 
 using namespace std;
 
@@ -165,6 +166,7 @@ inline map<int, string>  index_to_netname(map<string, int>  source)
     }
     return result;
 }
+
 template <typename T>
 std::vector<T> operator+(const std::vector<T> &A, const std::vector<T> &B)
 {
@@ -183,3 +185,5 @@ std::vector<T> &operator+=(std::vector<T> &A, const std::vector<T> &B)
     return A;                                        // here A could be named AB
 }
 }
+
+#endif

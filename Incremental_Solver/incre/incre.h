@@ -7,6 +7,10 @@
 #include "utils/ParseUtils.h"
 #include "utils/Options.h"
 #include "core/Dimacs.h"
+#include "incre/queryOrac.h"
+
+#ifndef INCRE_INCRE_INCRE_H
+#define INCRE_INCRE_INCRE_H
 
 using namespace std;
 using namespace Minisat;
@@ -20,15 +24,24 @@ class IncreSolver
 
 public:
 	static lbool ret;							// indicator: indicate whether this iteration in addon is sat or not
+	static int niter;							// indicator: number of iterations
 	IncreSolver();
 	~IncreSolver();
-	static const char  * Orac_file_path;		// input Oracle file path
 
+	SimpSolver S_general;						// general purpose solver
+
+	map<int, string> Solution;					// store final Solution
+
+	static vector<map<int, string> > OracPIs;	// store all temp PIs 
+	static vector<map<int, string> > OracPOs;	// store all temp POs
+
+	static lbool check_ret();					// tools: check ret before any instanization
 
 protected:
 	static const char  * Came_file_path;		// input Camouflage file path
-	static const char  * Solver_solution;		// addon solution path or final solution path
+	static const char  * Orac_file_path;		// input Oracle file path
 	static const char  * target_cnf;			// output of buildmiter, input of solver, and output of addon
+	static const char  * Solver_solution;		// addon solution path or final solution path
 
 	static vector<int> camPIndex;				// miter first circuit's PI, and also it the oracle's PI
 	static vector<int> camPOindex;				// PO index list
@@ -36,7 +49,7 @@ protected:
 	static vector<int> camCBindex;				// CB except duplicated circuit
 	static vector<int> miterCBindex;			// CB include duplicated circuit 
 	static vector<int> camCB2index;				// suplication's CB
-	static vector<int> nodes2grab;
+	static vector<int> nodes2grab;				// variable need to be frozen during incremental solving
 	static map<int, string> indexVarDict;		// store map of index to netname
     static map<string, int> varIndexDict;		// store map of netname to index
 
@@ -44,7 +57,6 @@ protected:
 	map<int, string> CB2temp;			// store temporary (only in this iteration) duplication CB index->value
 	map<int, string> PItemp;			// store temporary (only in this iteration) miter PI index->value
 	map<int, string> POtemp;			// store temporary (only in this iteration) oracle PO index->value
-	map<int, string> Solution;			// store final Solution
 
 	vector<int> addon_CB1;				// store temporary (only in this iteration) first duplication CB index
 	vector<int> addon_CB2;				// store temporary (only in this iteration) second duplication CB index
@@ -59,14 +71,11 @@ protected:
 
 	static vector<string> camCNFile;			// original Camouflaged circuit CNF
 
-	static vector<map<int, string> > OracPIs;	// store all temp PIs 
-	static vector<map<int, string> > OracPOs;	// store all temp POs
-
 	static SimpSolver S;						// used for solve add on
 	static SimpSolver S_final;					// used for solve finalSolue
-	static SimpSolver S_general;				// general purpose solver
 
 protected:
+
 	inline vector<string> duplicateCircuit(vector<string> cnFile, int start_index);		// tools: duplicate a circuit based on "cnFile", index start from "start_index"
 	inline vector<string> assign_value(map<int, string> &value_map, vector<int> what);	// tools: use "value_map" value to assign elements in "what"
 	inline vector<string> connectNets(vector<int> &piVec, int start_index);				// tools  using known start_index to connect two circuit
@@ -82,21 +91,15 @@ class MiterSolver : public IncreSolver
 {
 
 private:
-	int OracVarNum;
-	int pbitsNum;																				// #CB
-	int ObfGateNum;																				// #obfusgates
 	int baseMtrVarNum;																			// total variable number (original + duplicated + XOR + OR)
-	int PInum2grab;																				// #PI, equal to original camouflaged circuit #PI
 
-	vector<string> OraCNFile;
 	vector<string> baseCnfMtrLs;																// completed miter (including original Cam, duplicated Cam, XOR, Or)
-	vector<vector<int> > inputsInt;																// vector of PI (or CB) list
 	vector<vector<int> > inputs;																// same to inputsInt
 	vector<int> oracPONodes2grab;
 	vector<int> OracPIndex;
 		
 public:
-	MiterSolver(char const * path1, char const * path2);										// constructor: initialize base class and milterSolver
+	MiterSolver(char const * path1);															// constructor: initialize base class and milterSolver
 	~MiterSolver();																				// deconstructor
 	void buildmiter();																			// main: build CNF formatted miter and export to Miter_file_path
 private:
@@ -136,24 +139,24 @@ class AddonSolver: public IncreSolver
 {
 	
 public:
-	AddonSolver();											
+	AddonSolver(Oracle *ora);											
 	~AddonSolver();
 	void start_solving();																// main: start a iteration
 	inline void print_solution(const char * path);										// tools: in current iteration, print out solution into "path"
 
 
 private:
+	Oracle *oracle;
 	inline void freeze();																// main: used to setFrozen for node2grab, so they will not be removed during simplification
 	inline void print_map(map<int,string> &container, ofstream &outfile);				// tools: export content of "container" to "outfile"
 	inline void addconstrains();														// main: based on solution, generate new addon circuit
 	inline void solve();																// main: used to solve both miter and addconstrains
-};
+	inline void getPO();																// main: get corresponding PO from oracle
+	inline map<string, string> translate_PI();															// tools: input is map<int, string> PItemp, target is map<string, string>(netname, vlaue)
+	inline void translate_PO(map<string, string>);															// tools: input is map<string, string>(netname, value), target is map<int, string> POtemp;
 
-
-class queryOrac: public IncreSolver
-{
-public:
-	virtual vector<map<string, bool> > getPOs(const char * path, vector<map<string, bool> > oracPIs);		// interface: provide oracPIs and oracle path, require oracPOs respect to each oracPIs
 };
 
 }
+
+#endif

@@ -11,7 +11,6 @@
 #include "utils/ParseUtils.h"
 #include "utils/Options.h"
 #include "core/Dimacs.h"
-
 using namespace Minisat;
 using namespace Incre;
 using namespace std;
@@ -22,8 +21,8 @@ using namespace std;
 
 
 lbool IncreSolver::ret = l_False;
-
-const char *  IncreSolver::Orac_file_path;
+int IncreSolver::niter = 1;
+const char * IncreSolver::Orac_file_path;
 const char * IncreSolver::Came_file_path;
 const char * IncreSolver::Solver_solution = "Solver_solution";
 const char * IncreSolver::target_cnf = "target.cnf";
@@ -62,6 +61,10 @@ IncreSolver::~IncreSolver()
 //	cout << "IncreSolver is deleted" << endl;
 }
 
+lbool IncreSolver::check_ret()
+{
+    return ret;
+}
 vector<string> IncreSolver::assign_value(map<int, string> &value_map, vector<int> what)
 {
     vector<string> result;
@@ -133,12 +136,10 @@ void IncreSolver::grabnodes()
     {
 
         grab(camPIndex, PItemp);
-        grab(OracPOndex, POtemp);
         grab(camCBindex, CB1temp);
         grab(camCB2index, CB2temp);
 
         OracPIs.push_back(PItemp);
-        OracPOs.push_back(POtemp);
     }
 
 }
@@ -156,10 +157,9 @@ void IncreSolver::grab(vector<int> &list, map<int,string> &target)
 }
 //=================================================================================================
 //implementation of MiterSolver
-MiterSolver::MiterSolver(char const * path1, char const * path2)
+MiterSolver::MiterSolver(char const * path1)
 {
-    Orac_file_path = path1;
-    Came_file_path = path2;
+    Came_file_path = path1;
 }
 
 MiterSolver::~MiterSolver()
@@ -184,7 +184,7 @@ vector<string> MiterSolver::connectPO_xor(vector<int> &posIndex, int &camVarNum,
     print_vector(cnfLines,"connectPO_xor");
     return cnfLines;
 }
-
+/*
 void MiterSolver::genOracCNF(char const * OracPath, int start)
 {
     map<string, int> gateTypeDict;
@@ -337,13 +337,11 @@ void MiterSolver::genOracCNF(char const * OracPath, int start)
     }
 
 }
-
+*/
 void MiterSolver::genCameCNF(char const * CamePath)
 {
     vector<string> cnfLines;
     vector<string> Vlines;
-    vector<string> POs;
-    vector<string> wires;
     vector<vector<int> > inputs;
     map<string, int> gateTypeDict;
     vector<string> cnFile;
@@ -390,6 +388,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
 
         else if((line.find("output") != string::npos) && (line.find("//") == string::npos))
         {
+            vector<string> POs;
             cout << "Processing output " << endl;
             strip_all(line, "output");
             strip_all(line, " ");
@@ -409,6 +408,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
 
         else if((line.find("wire") != string::npos) && (line.find("//") == string::npos))
         {
+            vector<string> wires;
             cout << "Processing wire" << endl;
             strip_all(line, "wire");
             strip_all(line, " ");
@@ -527,54 +527,43 @@ void MiterSolver::genCameCNF(char const * CamePath)
     string firstLine = "p cnf " + tostring(varNum) + " " + tostring(clauseNum) + " \n";
 
     baseCnfMtrLs = final_miter;
-    inputsInt = inputs;
     camPIndex = inputs.front();
     for(vector<vector<int> >::iterator iter = inputs.begin() + 1; iter != inputs.end(); ++iter)
     {
         camCBindex += *iter;
     }
-    pbitsNum = camCBindex.size();
-    ObfGateNum = pbitsNum/2;
     camPOindex = posIndex;
     baseMtrVarNum = varNum;
-    PInum2grab = camPIndex.size();
     miterOutIndex = varNum; 
 
-    ofstream outfile("miterCNF");
-    for(vector<string>::iterator iter = final_miter.begin(); iter != final_miter.end(); ++iter)
-    {
-//        cout << *iter;
-        outfile << *iter;
-    }
+    print_vector(final_miter, "miterCNF");
 
-};
+}
 
 
 void MiterSolver::buildmiter()
 {
     cout << "The miter will export to " << target_cnf << endl;
-    cout << "The Oracle file is " << Orac_file_path << endl;
     cout << "The Came_file_path is " << Came_file_path << endl;
     genCameCNF(Came_file_path);
-    genOracCNF(Orac_file_path, baseMtrVarNum + 1);
+    // genOracCNF(Orac_file_path, baseMtrVarNum + 1);
     cout << "start to buildmiter" << endl;
 //========================================================================================================================
 //add both Oracle and miter to single circuit
-    cktTotVarNum = OracVarNum + baseMtrVarNum;
+    cktTotVarNum = baseMtrVarNum;
 //========================================================================================================================
 //connect PIs oracle and miter
-    vector<string> connect_orac_cam;
-    vector<string> miter_with_orac;
-    connect_orac_cam = connectNets(camPIndex, miterOutIndex);           //using known start_index to connect two circuit
-    connect_orac_cam.insert(connect_orac_cam.begin(), "c connect oracle PI with cam PI\n");
-    miter_with_orac = baseCnfMtrLs + OraCNFile + connect_orac_cam;
+//    vector<string> connect_orac_cam;
+//    vector<string> miter_with_orac;
+//    connect_orac_cam = connectNets(camPIndex, miterOutIndex);           //using known start_index to connect two circuit
+//    connect_orac_cam.insert(connect_orac_cam.begin(), "c connect oracle PI with cam PI\n");
     string cmmtline1 = "c this file is generated by buildmiter\n";
     string cmmtline2 = "c generated on " + get_localtime();
-    string problemLn = "p cnf " + tostring(cktTotVarNum) + " " + tostring(miter_with_orac.size() - 5) + "\n";
-    miter_with_orac.insert(miter_with_orac.begin(), problemLn);
-    miter_with_orac.insert(miter_with_orac.begin(), cmmtline2);
-    miter_with_orac.insert(miter_with_orac.begin(), cmmtline1);
-    print_vector(miter_with_orac, target_cnf);
+    string problemLn = "p cnf " + tostring(cktTotVarNum) + " " + tostring(baseCnfMtrLs.size() - 5) + "\n";
+    baseCnfMtrLs.insert(baseCnfMtrLs.begin(), problemLn);
+    baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline2);
+    baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline1);
+    print_vector(baseCnfMtrLs, target_cnf);
 //========================================================================================================================
 //update miterCBindex to include duplication's CB
     for(vector<int>::iterator pbitIndex = camCBindex.begin(); pbitIndex != camCBindex.end(); ++pbitIndex)
@@ -585,23 +574,20 @@ void MiterSolver::buildmiter()
     miterCBindex = camCBindex + camCB2index;
 //========================================================================================================================    
 //update oracPOnodes2grab with the linked oracle circuit
-    for(vector<int>::iterator po = OracPOndex.begin(); po != OracPOndex.end(); ++po)
-    {
-        int newPO = *po + miterOutIndex;
-        oracPONodes2grab.push_back(newPO);
-    }
+//    for(vector<int>::iterator po = OracPOndex.begin(); po != OracPOndex.end(); ++po)
+//    {
+//        int newPO = *po + miterOutIndex;
+//        oracPONodes2grab.push_back(newPO);
+//    }
 //========================================================================================================================
-//nodes2grab now includes miterCBindex, camPIndex, OracPOndex 
+//nodes2grab now includes miterCBindex, camPIndex
     nodes2grab = camPIndex; 
     nodes2grab += miterCBindex;
-    nodes2grab += OracPOndex;
     nodes2grab.push_back(miterOutIndex);
     print_vector(camPIndex, "camPIndex");
     print_vector(camCBindex, "camCBindex");
     print_vector(miterCBindex, "miterCBindex");
     print_vector(nodes2grab, "nodes2grab");
-    print_vector(OracPOndex, "OracPOndex");
-    print_vector(oracPONodes2grab, "oracPONodes2grab");
 
 }
 
@@ -609,9 +595,10 @@ void MiterSolver::buildmiter()
 //implementation of AddonSolver
 
 
-AddonSolver::AddonSolver():IncreSolver()
+AddonSolver::AddonSolver(Oracle *ora):IncreSolver()
 {
 //    cout << "AddonSolver created" << endl;
+    oracle = ora;
 }
 AddonSolver::~AddonSolver()
 {
@@ -627,19 +614,28 @@ void AddonSolver::freeze()
         {
             S.setFrozen(*index - 1, true);
         }        
+        already_frozen++;
     }
 
 }
 
 void AddonSolver::start_solving()
 {
-    solve();        
-    grabnodes();
-    print_solution("iteration_solu");
-    addconstrains();
+    //solve miter, grabnodes, getPO, addconstrains
+    solve();    
+    grabnodes();                // grab CB1 CB2 info and PItemp
+    getPO();                    // use PItemp, query Orac and get POtemp
+//    print_solution("iteration_solu");
+    addconstrains();            // based on PItemp and POtemp, add more constrain on solver, prepare to next generation 
 }
 
+void AddonSolver::getPO()
+{
 
+    oracle->getPIs(translate_PI());
+    translate_PO(oracle->getPOs());
+    OracPOs.push_back(POtemp);
+}
 void AddonSolver::print_solution(const char * path)
 {
 
@@ -722,6 +718,7 @@ void AddonSolver::addconstrains()
         vector<string> dupCkt2 =  duplicateCircuit(camCNFile, correction2);
         dupCkt1.insert(dupCkt1.begin(), "c this is 1st duplication\n");
         dupCkt2.insert(dupCkt2.begin(), "c this is 2nd duplication\n");
+
         cktTotVarNum = correction2 + camVarNum; // update the total variable number
         //========================================================================================================================
         //connect CB of the two new duplications to miter
@@ -765,7 +762,26 @@ void AddonSolver::addconstrains()
 
 }
 
-
+map<string, string> AddonSolver::translate_PI()                                                         // tools: input is map<int, string> PItemp, target is map<string, string>(netname, vlaue)
+{
+    map<string, string> result;
+    for(map<int, string>::iterator index = PItemp.begin(); index != PItemp.end(); ++index)
+    {
+        string net = indexVarDict[index->first];
+        string value = index->second;
+        result.insert(pair<string, string>(net, value));
+    }
+    return result;
+}
+void AddonSolver::translate_PO(map<string, string> PO_temp)                                                         // tools: input is map<string, string>(netname, value), target is map<int, string> POtemp;
+{
+    for(map<string, string>::iterator index = PO_temp.begin(); index != PO_temp.end(); ++index)
+    {
+        int net = varIndexDict[index->first];
+        string value = index->second;
+        POtemp.insert(pair<int, string>(net, value));
+    }
+}
 
 //========================================================================================================================
 
@@ -905,3 +921,7 @@ void SoluFinder::print_solution()
     cout << endl;
 
 }                                                                          
+
+//========================================================================================================================
+//implementation of 
+

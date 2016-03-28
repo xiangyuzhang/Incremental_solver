@@ -30,7 +30,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "core/Dimacs.h"
 #include "simp/SimpSolver.h"
 
-
 using namespace Incre;
 using namespace Minisat;
 using namespace std;
@@ -39,17 +38,27 @@ using namespace std;
 //static Solver* solver;
 int main(int argc, char* argv[])
 {
-	IncreSolver SLV;
+
 	const char * Orac = argv[1];
 	const char * Cam = argv[2];
-    MiterSolver Miter(Orac, Cam);
-    Miter.buildmiter();
+
+	MiterSolver MTR(Cam);
+//=================================================================================================================================
+// build miter based on income cam file
+    MTR.buildmiter();
+//=================================================================================================================================
+// incrementally solve
+
+    Oracle::set_path(Orac);
     do
     {
-     	AddonSolver Addon;
-    	Addon.start_solving();   	
+     	Oracle 		*ORA = new Oracle;
+     	AddonSolver ADD(ORA);
+    	ADD.start_solving();   	
     }
-    while(SLV.ret == l_True);
+    while(IncreSolver::check_ret() == l_True);
+//================================================================================================================================
+// find final Solution
     SoluFinder finder;
     finder.find_solu();
     cout << "finished" << endl;
