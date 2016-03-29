@@ -1,3 +1,6 @@
+#ifndef INCRE_INCRE_TOOLS_H
+#define INCRE_INCRE_TOOLS_H
+
 #include <map>
 #include <string>
 #include <vector>
@@ -6,8 +9,7 @@
 #include <iostream>
 #include <regex>
 
-#ifndef INCRE_INCRE_TOOLS_H
-#define INCRE_INCRE_TOOLS_H
+
 
 using namespace std;
 

@@ -1,9 +1,11 @@
+#ifndef     INCRE_INCRE_DICT_H
+#define     INCRE_INCRE_DICT_H
+
 #include <string>
 #include <vector>
 #include <sstream>
 
-#ifndef     INCRE_INCRE_DICT_H
-#define     INCRE_INCRE_DICT_H
+
 
 
 using namespace std;

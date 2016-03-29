@@ -3,6 +3,7 @@
 #include <fstream>
 #include <algorithm>
 #include <string>
+#include <stdlib.h>
 #include "incre/incre.h"
 #include "simp/SimpSolver.h"
 #include "incre/tools.h"
@@ -181,7 +182,7 @@ vector<string> MiterSolver::connectPO_xor(vector<int> &posIndex, int &camVarNum,
         cnfLines.push_back(tostring(inV1) + " -" + tostring(inV2) + " " + tostring(outV) + " 0\n");
         cnfLines.push_back("-" + tostring(inV1) + " " + tostring(inV2) + " " + tostring(outV) + " 0\n");
     }
-    print_vector(cnfLines,"connectPO_xor");
+//    print_vector(cnfLines,"connectPO_xor");
     return cnfLines;
 }
 /*
@@ -468,7 +469,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
         
         }                    
     }
-    print_vector(cnFile, "original_cam");
+//    print_vector(cnFile, "original_cam");
     camVarNum = varIndex - 1;
     camCNFile = cnFile;
 //========================================================================================================================
@@ -478,7 +479,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
     cnFile.push_back("c The second camouflage circuit:\n");
     vector<string> cnFile_merged;
     cnFile_merged = cnFile + cnFile2;
-    print_vector(cnFile_merged, "cnFile_merged");
+//    print_vector(cnFile_merged, "cnFile_merged");
 
 
 //========================================================================================================================
@@ -489,7 +490,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
     vector<string> connection = connectNets(inputs[0], camVarNum); 
     vector<string> cnFile_PIconnected;          
     cnFile_PIconnected = cnFile_merged + connection;
-    print_vector(cnFile_PIconnected, "cnFile_PIconnected");
+//    print_vector(cnFile_PIconnected, "cnFile_PIconnected");
 //========================================================================================================================
 //2, add forbidden bits
 
@@ -501,7 +502,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
     vector<string> XOR_connection = connectPO_xor(posIndex, camVarNum, xorInt);
     vector<string> cnFile_POconnected;
     cnFile_POconnected = cnFile_PIconnected + XOR_connection;
-    print_vector(cnFile_POconnected, "cnFile_POconnected");
+//   print_vector(cnFile_POconnected, "cnFile_POconnected");
 //========================================================================================================================
 //4, use Or to connect all the XOR
     cout << "connect all the XORs using Or" << endl; 
@@ -584,10 +585,10 @@ void MiterSolver::buildmiter()
     nodes2grab = camPIndex; 
     nodes2grab += miterCBindex;
     nodes2grab.push_back(miterOutIndex);
-    print_vector(camPIndex, "camPIndex");
-    print_vector(camCBindex, "camCBindex");
-    print_vector(miterCBindex, "miterCBindex");
-    print_vector(nodes2grab, "nodes2grab");
+//    print_vector(camPIndex, "camPIndex");
+//    print_vector(camCBindex, "camCBindex");
+//    print_vector(miterCBindex, "miterCBindex");
+//    print_vector(nodes2grab, "nodes2grab");
 
 }
 
@@ -595,10 +596,9 @@ void MiterSolver::buildmiter()
 //implementation of AddonSolver
 
 
-AddonSolver::AddonSolver(Oracle *ora):IncreSolver()
+AddonSolver::AddonSolver():IncreSolver()
 {
 //    cout << "AddonSolver created" << endl;
-    oracle = ora;
 }
 AddonSolver::~AddonSolver()
 {
@@ -621,20 +621,36 @@ void AddonSolver::freeze()
 
 void AddonSolver::start_solving()
 {
-    //solve miter, grabnodes, getPO, addconstrains
+    //solve miter, grabnodes
     solve();    
     grabnodes();                // grab CB1 CB2 info and PItemp
-    getPO();                    // use PItemp, query Orac and get POtemp
-//    print_solution("iteration_solu");
-    addconstrains();            // based on PItemp and POtemp, add more constrain on solver, prepare to next generation 
+    export_PI();
 }
 
-void AddonSolver::getPO()
+void AddonSolver::queryOrac(const char * orac)
 {
+	export_PI();
+	run_shell(orac);
+	parse_PO();
+}
 
-    oracle->getPIs(translate_PI());
-    translate_PO(oracle->getPOs());
-    OracPOs.push_back(POtemp);
+void AddonSolver::run_shell(const char * orac)
+{
+	int i = system(orac);
+	if(i == -1)
+	{
+		cout << "call shell failed!!!" << endl;
+		exit(25);
+	}
+	else if(i == 0)
+	{
+		cout << "call shell successed, but no sub_thread created!!!" <<endl;
+		exit(25);
+	}
+	else 
+	{
+		cout << "call: " << orac << " successed, executing..." << endl;
+	}
 }
 void AddonSolver::print_solution(const char * path)
 {
@@ -706,10 +722,12 @@ void AddonSolver::solve()   // used to solve both miter and addons
     outfile.close();
 }
 
-void AddonSolver::addconstrains()
+void AddonSolver::continue_solving()
 {
     if(ret == l_True)
     {
+        OracPOs.push_back(POtemp);
+
         //========================================================================================================================
         //create 2 duplication of original cam circuit
         int correction1 = cktTotVarNum;
@@ -762,25 +780,43 @@ void AddonSolver::addconstrains()
 
 }
 
-map<string, string> AddonSolver::translate_PI()                                                         // tools: input is map<int, string> PItemp, target is map<string, string>(netname, vlaue)
+void AddonSolver::export_PI()                                                         // tools: input is map<int, string> PItemp, target is map<string, string>(netname, vlaue)
 {
-    map<string, string> result;
+	ofstream outfile;
+	outfile.open("PI", std::ios::out);
     for(map<int, string>::iterator index = PItemp.begin(); index != PItemp.end(); ++index)
     {
-        string net = indexVarDict[index->first];
-        string value = index->second;
-        result.insert(pair<string, string>(net, value));
+        outfile << indexVarDict[index->first] << "\t";
     }
-    return result;
-}
-void AddonSolver::translate_PO(map<string, string> PO_temp)                                                         // tools: input is map<string, string>(netname, value), target is map<int, string> POtemp;
-{
-    for(map<string, string>::iterator index = PO_temp.begin(); index != PO_temp.end(); ++index)
+    outfile << endl;
+    for(map<int, string>::iterator index = PItemp.begin(); index != PItemp.end(); ++index)
     {
-        int net = varIndexDict[index->first];
-        string value = index->second;
-        POtemp.insert(pair<int, string>(net, value));
+    	outfile << index->second << "\t";
     }
+    outfile << endl;
+}
+void AddonSolver::parse_PO()                                                         // tools: input is map<string, string>(netname, value), target is map<int, string> POtemp;
+{
+	ifstream infile;
+	infile.open("PO", std::ios::in);
+	string first_line;
+	string second_line;
+
+	getline(infile, first_line);
+	getline(infile, second_line);
+
+	vector<string> name_temp;
+	vector<string> value_temp;
+	SplitString(first_line, name_temp, "\t");
+	SplitString(second_line, value_temp, "\t");
+
+	vector<string>::iterator value = value_temp.begin();
+	for(vector<string>::iterator name = name_temp.begin(); name != name_temp.end(); ++name)
+	{
+		POtemp.insert(pair<int, string>(varIndexDict[*name], *value));
+		value++;
+	}
+
 }
 
 //========================================================================================================================
@@ -923,5 +959,6 @@ void SoluFinder::print_solution()
 }                                                                          
 
 //========================================================================================================================
-//implementation of 
+
+
 

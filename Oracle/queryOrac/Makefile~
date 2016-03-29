@@ -1,0 +1,4 @@
+EXEC      = ORA
+DEPDIR    = mtl utils core queryOrac
+MROOT     = /home/parallels/Desktop/Incremental_Solver
+include $(MROOT)/mtl/template.mk

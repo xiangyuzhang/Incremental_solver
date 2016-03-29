@@ -1,0 +1,4 @@
+EXEC      = ORA
+DEPDIR    = mtl utils queryOrac simp
+MROOT	  = /home/parallels/Desktop/Oracle
+include $(MROOT)/mtl/template.mk

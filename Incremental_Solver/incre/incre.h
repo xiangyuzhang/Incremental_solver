@@ -1,3 +1,6 @@
+#ifndef INCRE_INCRE_INCRE_H
+#define INCRE_INCRE_INCRE_H
+
 #include <map>
 #include <string>
 #include <iostream>
@@ -7,10 +10,8 @@
 #include "utils/ParseUtils.h"
 #include "utils/Options.h"
 #include "core/Dimacs.h"
-#include "incre/queryOrac.h"
 
-#ifndef INCRE_INCRE_INCRE_H
-#define INCRE_INCRE_INCRE_H
+
 
 using namespace std;
 using namespace Minisat;
@@ -28,14 +29,15 @@ public:
 	IncreSolver();
 	~IncreSolver();
 
-	SimpSolver S_general;						// general purpose solver
-
 	map<int, string> Solution;					// store final Solution
 
 	static vector<map<int, string> > OracPIs;	// store all temp PIs 
 	static vector<map<int, string> > OracPOs;	// store all temp POs
 
 	static lbool check_ret();					// tools: check ret before any instanization
+
+	map<int, string> PItemp;			// store temporary (only in this iteration) miter PI index->value
+	map<int, string> POtemp;			// store temporary (only in this iteration) oracle PO index->value
 
 protected:
 	static const char  * Came_file_path;		// input Camouflage file path
@@ -55,8 +57,6 @@ protected:
 
 	map<int, string> CB1temp;			// store temporary (only in this iteration) original CB index->value 
 	map<int, string> CB2temp;			// store temporary (only in this iteration) duplication CB index->value
-	map<int, string> PItemp;			// store temporary (only in this iteration) miter PI index->value
-	map<int, string> POtemp;			// store temporary (only in this iteration) oracle PO index->value
 
 	vector<int> addon_CB1;				// store temporary (only in this iteration) first duplication CB index
 	vector<int> addon_CB2;				// store temporary (only in this iteration) second duplication CB index
@@ -76,13 +76,13 @@ protected:
 
 protected:
 
-	inline vector<string> duplicateCircuit(vector<string> cnFile, int start_index);		// tools: duplicate a circuit based on "cnFile", index start from "start_index"
-	inline vector<string> assign_value(map<int, string> &value_map, vector<int> what);	// tools: use "value_map" value to assign elements in "what"
-	inline vector<string> connectNets(vector<int> &piVec, int start_index);				// tools  using known start_index to connect two circuit
-	inline void grab(vector<int> &list, map<int,string> &target);						// tools: searching elements in list in solution list(S.model[], index left shifted by 1), assign into target
-	inline void grabnodes();															// main: obtain values from "S"  
-	inline vector<int> get_index(vector<int> source, int correction);					// tools: used to get duplication's PI, PO, CB index. based on "source", calculate with "correction", store in "target" 
-	inline map<string, int> netname_to_value(vector<string> nets);						// tools: used to search nets' value;
+	vector<string> duplicateCircuit(vector<string> cnFile, int start_index);		// tools: duplicate a circuit based on "cnFile", index start from "start_index"
+	vector<string> assign_value(map<int, string> &value_map, vector<int> what);	// tools: use "value_map" value to assign elements in "what"
+	vector<string> connectNets(vector<int> &piVec, int start_index);				// tools  using known start_index to connect two circuit
+	void grab(vector<int> &list, map<int,string> &target);						// tools: searching elements in list in solution list(S.model[], index left shifted by 1), assign into target
+	void grabnodes();															// main: obtain values from "S"  
+	vector<int> get_index(vector<int> source, int correction);					// tools: used to get duplication's PI, PO, CB index. based on "source", calculate with "correction", store in "target" 
+	map<string, int> netname_to_value(vector<string> nets);						// tools: used to search nets' value;
 
 };
 
@@ -139,21 +139,20 @@ class AddonSolver: public IncreSolver
 {
 	
 public:
-	AddonSolver(Oracle *ora);											
+	AddonSolver();											
 	~AddonSolver();
 	void start_solving();																// main: start a iteration
-	inline void print_solution(const char * path);										// tools: in current iteration, print out solution into "path"
-
+	void print_solution(const char * path);										// tools: in current iteration, print out solution into "path"
+	void continue_solving();														// main: based on solution, generate new addon circuit
+	void queryOrac(const char * orac);
 
 private:
-	Oracle *oracle;
-	inline void freeze();																// main: used to setFrozen for node2grab, so they will not be removed during simplification
-	inline void print_map(map<int,string> &container, ofstream &outfile);				// tools: export content of "container" to "outfile"
-	inline void addconstrains();														// main: based on solution, generate new addon circuit
-	inline void solve();																// main: used to solve both miter and addconstrains
-	inline void getPO();																// main: get corresponding PO from oracle
-	inline map<string, string> translate_PI();															// tools: input is map<int, string> PItemp, target is map<string, string>(netname, vlaue)
-	inline void translate_PO(map<string, string>);															// tools: input is map<string, string>(netname, value), target is map<int, string> POtemp;
+	void freeze();																// main: used to setFrozen for node2grab, so they will not be removed during simplification
+	void print_map(map<int,string> &container, ofstream &outfile);				// tools: export content of "container" to "outfile"
+	void solve();																// main: used to solve both miter and addconstrains
+	void export_PI();
+	void parse_PO();
+	void run_shell(const char * orac);
 
 };
 

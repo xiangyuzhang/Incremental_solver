@@ -29,7 +29,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include "incre/incre.h"
 #include "core/Dimacs.h"
 #include "simp/SimpSolver.h"
-
 using namespace Incre;
 using namespace Minisat;
 using namespace std;
@@ -39,8 +38,8 @@ using namespace std;
 int main(int argc, char* argv[])
 {
 
-	const char * Orac = argv[1];
-	const char * Cam = argv[2];
+	const char * Cam = argv[1];
+    const char * Orac = argv[2];
 
 	MiterSolver MTR(Cam);
 //=================================================================================================================================
@@ -49,14 +48,19 @@ int main(int argc, char* argv[])
 //=================================================================================================================================
 // incrementally solve
 
-    Oracle::set_path(Orac);
-    do
+
+    while(1)
     {
-     	Oracle 		*ORA = new Oracle;
-     	AddonSolver ADD(ORA);
-    	ADD.start_solving();   	
+     	AddonSolver ADD;
+
+    	ADD.start_solving();  
+    	if(IncreSolver::check_ret() == l_True)
+    	{
+            ADD.queryOrac(Orac);
+	     	ADD.continue_solving();
+    	} 	
+    	else break;
     }
-    while(IncreSolver::check_ret() == l_True);
 //================================================================================================================================
 // find final Solution
     SoluFinder finder;
