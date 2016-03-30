@@ -23,6 +23,9 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <zlib.h>
 #include <sys/resource.h>
 #include <iostream>
+#include <unistd.h>
+
+#include <stdlib.h>
 #include "utils/System.h"
 #include "utils/ParseUtils.h"
 #include "utils/Options.h"
@@ -59,7 +62,10 @@ int main(int argc, char* argv[])
             ADD.queryOrac(Orac);
 	     	ADD.continue_solving();
     	} 	
-    	else break;
+    	else 
+        {
+            break;
+        }
     }
 //================================================================================================================================
 // find final Solution
