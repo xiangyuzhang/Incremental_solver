@@ -3,7 +3,6 @@ import os
 import re
 from subprocess import call
 import sys
-from genMtrs import gateType
 
 __author__ = 'xiangyuzhang'
 
@@ -215,8 +214,6 @@ class Oracle:
                 line = line.replace(' ','')
                 if '.' in line and '(' in line: #means it is a mapped Verilog
                     gate = re.search(r'^(.*)(?=g\S+\(\.)', line).group().strip('1234567890')
-                else: #means it is a behavioral Verilog
-                    gate = gateType(line)
                 #convert vars to standard form:
                 buf_split = [term.replace('\\','').replace('[','').replace(']','') for term in line.split('.')]
                 buf_processed = []
