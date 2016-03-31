@@ -152,7 +152,7 @@ private:
 	void solve();																// main: used to solve both miter and addconstrains
 	void export_PI();
 	void parse_PO();
-	int run_shell(const char * orac);
+	void run_shell(const char * orac);
 
 };
 

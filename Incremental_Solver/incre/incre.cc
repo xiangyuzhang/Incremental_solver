@@ -645,10 +645,16 @@ void AddonSolver::queryOrac(const char * orac)
 	print_solution("solution");
 }
 
-int AddonSolver::run_shell(const char * orac)
+void AddonSolver::run_shell(const char * orac)
 {
-	int status = system("sh /home/parallels/Desktop/Incremental_Solver/simp/test.sh");
-	if(status == -1) cout << "create another thread failed" << endl;
+	const char *full_path = realpath(orac,NULL);
+	const char *sh = "sh ";
+
+	char buffer[1024];
+	strncpy(buffer, sh, sizeof(buffer));
+	strncat(buffer, full_path, sizeof(buffer));
+	FILE *status = popen(buffer, "r");
+	if(!status) cout << "create another thread failed" << endl;
 }
 void AddonSolver::print_solution(const char * path)
 {
