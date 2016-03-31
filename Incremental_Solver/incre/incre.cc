@@ -4,8 +4,11 @@
 #include <algorithm>
 #include <string>
 
+#include <stdio.h>
+#include <sys/types.h>
+#include <errno.h>
+#include <sys/wait.h>
 #include <unistd.h>
-
 #include <stdlib.h>
 #include "incre/incre.h"
 #include "simp/SimpSolver.h"
@@ -635,28 +638,17 @@ void AddonSolver::start_solving()
 
 void AddonSolver::queryOrac(const char * orac)
 {
+	remove("PO.txt");
 	run_shell(orac);
+	usleep(1000000);
 	parse_PO();
 	print_solution("solution");
 }
 
-void AddonSolver::run_shell(const char * orac)
+int AddonSolver::run_shell(const char * orac)
 {
-	int i = system(orac);
-	if(i == -1)
-	{
-		cout << "call shell failed!!!" << endl;
-		exit(25);
-	}
-	else if(i == 0)
-	{
-		cout << "call shell successed, but no sub_thread created!!!" <<endl;
-		exit(25);
-	}
-	else 
-	{
-		cout << "call: " << orac << " successed, executing..." << endl;
-	}
+	int status = system("sh /home/parallels/Desktop/Incremental_Solver/simp/test.sh");
+	if(status == -1) cout << "create another thread failed" << endl;
 }
 void AddonSolver::print_solution(const char * path)
 {
@@ -794,7 +786,7 @@ void AddonSolver::continue_solving()
 void AddonSolver::export_PI()                                                         // tools: input is map<int, string> PItemp, target is map<string, string>(netname, vlaue)
 {
 	ofstream outfile;
-	outfile.open("PI", std::ios::out);
+	outfile.open("PI.txt", std::ios::out);
     for(map<int, string>::iterator index = PItemp.begin(); index != PItemp.end(); ++index)
     {
         outfile << indexVarDict[index->first] << "\t";
@@ -809,12 +801,7 @@ void AddonSolver::export_PI()                                                   
 void AddonSolver::parse_PO()                                                         // tools: input is map<string, string>(netname, value), target is map<int, string> POtemp;
 {
 	ifstream infile;
-	infile.open("PO", std::ios::in);
-	if(!infile.is_open())
-	{
-		cout << "No PO found!!!" << endl;
-		exit(20);
-	}
+	infile.open("PO.txt", std::ios::in);
 	string first_line;
 	string second_line;
 
@@ -952,7 +939,7 @@ void SoluFinder::solve_it()
 
 void SoluFinder::print_solution()
 {
-/*	
+	
     cout << "Solution is:" << endl;
     for(vector<int>::iterator node = camCBindex.begin(); node != camCBindex.end(); ++node)
     {
@@ -973,7 +960,7 @@ void SoluFinder::print_solution()
         cout << index->second << "\t";
     }
     cout << endl;
-*/
+
     cout << "Solution is:" << endl;
 
 
