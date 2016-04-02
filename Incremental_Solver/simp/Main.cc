@@ -24,7 +24,6 @@ OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWA
 #include <sys/resource.h>
 #include <iostream>
 #include <unistd.h>
-
 #include <stdlib.h>
 #include "utils/System.h"
 #include "utils/ParseUtils.h"
@@ -38,15 +37,14 @@ using namespace std;
 
 
 //static Solver* solver;
-int main(int argc, char* argv[])
+int main(int argc, char** argv)
 {
 
-	const char * Cam = argv[1];
-    const char * Orac = argv[2];
-
-	MiterSolver MTR(Cam);
+    Support support(argc, argv);
 //=================================================================================================================================
 // build miter based on income cam file
+
+	MiterSolver MTR;
     MTR.buildmiter();
 //=================================================================================================================================
 // incrementally solve
@@ -59,7 +57,7 @@ int main(int argc, char* argv[])
     	ADD.start_solving();  
     	if(IncreSolver::check_ret() == l_True)
     	{
-            ADD.queryOrac(Orac);
+            ADD.queryOrac();
 	     	ADD.continue_solving();
     	} 	
     	else 

@@ -31,7 +31,6 @@ lbool IncreSolver::ret = l_False;
 int IncreSolver::niter = 1;
 const char * IncreSolver::Orac_file_path;
 const char * IncreSolver::Came_file_path;
-const char * IncreSolver::Solver_solution = "Solver_solution";
 const char * IncreSolver::target_cnf = "target.cnf";
 
 SimpSolver IncreSolver::S;
@@ -166,9 +165,8 @@ void IncreSolver::grab(vector<int> &list, map<int,string> &target)
 }
 //=================================================================================================
 //implementation of MiterSolver
-MiterSolver::MiterSolver(char const * path1)
+MiterSolver::MiterSolver()
 {
-    Came_file_path = path1;
 }
 
 MiterSolver::~MiterSolver()
@@ -224,7 +222,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
             cout << "Processing input" << endl;
             strip_all(line, "input");
             strip_all(line, " ");
-            SplitString(line, PIs, ",");
+            SplitString(line, PIs, ",");          
             vector<int> tmpPis;
             for(vector<string>::iterator pi = PIs.begin(); pi != PIs.end(); ++pi)
             {
@@ -236,7 +234,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 tmpPis.push_back(varIndex);
                 varIndex++;                
             }  
-            inputs.push_back(tmpPis);          
+            inputs.push_back(tmpPis);  
         }
 
         else if((line.find("output") != string::npos) && (line.find("//") == string::npos))
@@ -375,10 +373,10 @@ void MiterSolver::genCameCNF(char const * CamePath)
         camCBindex += *iter;
     }
     camPOindex = posIndex;
+    print_vector(camPOindex, "camPOindex");
     baseMtrVarNum = varNum;
     miterOutIndex = varNum; 
 
-    print_vector(final_miter, "miterCNF");
 
 }
 
@@ -467,23 +465,24 @@ void AddonSolver::start_solving()
     export_PI();
 }
 
-void AddonSolver::queryOrac(const char * orac)
+void AddonSolver::queryOrac()
 {
 	remove("PO.txt");
-	run_shell(orac);
+	run_shell();
 	usleep(1000000);
 	parse_PO();
-//	print_solution("solution");
+	print_solution("solution");
 }
 
-void AddonSolver::run_shell(const char * orac)
+void AddonSolver::run_shell()
 {
-	const char *full_path = realpath(orac,NULL);
+	const char *full_path = Orac_file_path;
 	const char *sh = "sh ";
 
 	char buffer[1024];
 	strncpy(buffer, sh, sizeof(buffer));
 	strncat(buffer, full_path, sizeof(buffer));
+	cout << "Runing: " << buffer << endl; 
 	FILE *status = popen(buffer, "r");
 	if(!status) cout << "create another thread failed" << endl;
 }
@@ -718,7 +717,8 @@ void SoluFinder::case_2()
 
 void SoluFinder::solve_it()
 {
-    cout << "start find finalSolu" << endl;
+     cout << "start find finalSolu" << endl;
+    fstream outfile("Solver_solution");
     gzFile in = gzopen("finalSolu.cnf", "rb");
     parse_DIMACS(in, S_final);
     gzclose(in);
@@ -726,6 +726,7 @@ void SoluFinder::solve_it()
     S_final.eliminate(true);
     if(!S_final.okay())
     {
+        outfile << "UNSAT\n" << endl;
         cout << "pre find: UNSAT" << endl;
     }
     
@@ -734,10 +735,23 @@ void SoluFinder::solve_it()
 
     if(ret == l_True)
     {
+        outfile << "SAT" << endl;
         cout << "SAT" << endl;
+        for(int i = 0; i < S_final.nVars(); i++)
+        {
+            if(S_final.model[i] != l_Undef)
+            {
+                outfile << " ";
+                if(S_final.model[i] == l_True) outfile << "" + tostring(i + 1);
+                else outfile << "-" + tostring(i + 1);
+                
+            }
+        }
+        outfile << " 0" << endl;
     }
-    else if(ret == l_False) cout << "UNSAT" << endl;
-    else    cout << "INDET" << endl;
+    else if(ret == l_False) outfile << "UNSAT" << endl;
+    else    outfile << "INDET" << endl;
+    outfile.close();   
 
 } 
 
@@ -770,6 +784,30 @@ void SoluFinder::print_solution()
 }                                                                          
 
 //========================================================================================================================
+//implementation of support 
+Support::Support(int one, char ** two)
+{
+	int argc = one;
+	char **argv = two;
+    a.add<int>("verb", 'v', "level of verb", false, 1, cmdline::range(1,3));
+    a.footer("<Cam.v> <Orac.sh>");
+    a.parse_check(argc, argv);
+
+    bool ok = a.parse(argc, argv);
+
+    if(argc == 1 || a.exist("help")) {cerr << a.usage(); exit(-1);}
+    if(!ok) {cerr << a.error() << endl << a.usage(); exit(-1);}
+    if(a.rest().size() < 2) {cout << "Please provide both <Cam.v> and <Orac.sh>" << endl; exit(-1);}
+    else
+    {
+	    if((access(a.rest()[0].c_str(), 04)) != -1){Came_file_path = realpath(a.rest()[0].c_str(), NULL);}
+	    else{cout << "error: Camouflage Circuit is not existed or read prohibited!!!\n"; exit(200);}
+	    if((access(a.rest()[1].c_str(), 04)) != -1){Orac_file_path = realpath(a.rest()[1].c_str(), NULL);}
+	    else{cout << "error: Shell file is not existed or read prohibited!!!\n"; exit(200);}
+    }
+
+}
+
 
 
 

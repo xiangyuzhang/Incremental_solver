@@ -14,7 +14,8 @@
  /home/parallels/Desktop/Incremental_Solver/core/SolverTypes.h \
  /home/parallels/Desktop/Incremental_Solver/mtl/Map.h \
  /home/parallels/Desktop/Incremental_Solver/mtl/Alloc.h \
- /home/parallels/Desktop/Incremental_Solver/core/Dimacs.h
+ /home/parallels/Desktop/Incremental_Solver/core/Dimacs.h \
+ /home/parallels/Desktop/Incremental_Solver/incre/cmdline.h
 /home/parallels/Desktop/Incremental_Solver/simp/SimpSolver.o /home/parallels/Desktop/Incremental_Solver/simp/SimpSolver.or /home/parallels/Desktop/Incremental_Solver/simp/SimpSolver.od /home/parallels/Desktop/Incremental_Solver/simp/SimpSolver.op: \
  /home/parallels/Desktop/Incremental_Solver/simp/SimpSolver.cc \
  /home/parallels/Desktop/Incremental_Solver/mtl/Sort.h \

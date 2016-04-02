@@ -10,7 +10,7 @@
 #include "utils/ParseUtils.h"
 #include "utils/Options.h"
 #include "core/Dimacs.h"
-
+#include "incre/cmdline.h"
 
 
 using namespace std;
@@ -99,7 +99,7 @@ private:
 	vector<int> OracPIndex;
 		
 public:
-	MiterSolver(char const * path1);															// constructor: initialize base class and milterSolver
+	MiterSolver();															// constructor: initialize base class and milterSolver
 	~MiterSolver();																				// deconstructor
 	void buildmiter();																			// main: build CNF formatted miter and export to Miter_file_path
 private:
@@ -144,7 +144,7 @@ public:
 	void start_solving();																// main: start a iteration
 	void print_solution(const char * path);										// tools: in current iteration, print out solution into "path"
 	void continue_solving();														// main: based on solution, generate new addon circuit
-	void queryOrac(const char * orac);
+	void queryOrac();
 
 private:
 	void freeze();																// main: used to setFrozen for node2grab, so they will not be removed during simplification
@@ -152,7 +152,18 @@ private:
 	void solve();																// main: used to solve both miter and addconstrains
 	void export_PI();
 	void parse_PO();
-	void run_shell(const char * orac);
+	void run_shell();
+
+};
+
+class Support: public IncreSolver
+{
+private:
+	cmdline::parser a;
+
+public:
+	Support(int argc, char ** argv);
+	void parse_argv();
 
 };
 

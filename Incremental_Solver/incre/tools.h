@@ -16,6 +16,8 @@ using namespace std;
 namespace Incre
 {
 
+
+
 inline string get_localtime()
     {
         time_t nowtime;
