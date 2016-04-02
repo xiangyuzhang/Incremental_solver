@@ -40,6 +40,7 @@ public:
 	map<int, string> POtemp;			// store temporary (only in this iteration) oracle PO index->value
 
 protected:
+	static bool debug;							// level of verb
 	static const char  * Came_file_path;		// input Camouflage file path
 	static const char  * Orac_file_path;		// input Oracle file path
 	static const char  * target_cnf;			// output of buildmiter, input of solver, and output of addon

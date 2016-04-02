@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include "incre/incre.h"
@@ -29,9 +30,12 @@ using namespace std;
 
 lbool IncreSolver::ret = l_False;
 int IncreSolver::niter = 1;
+bool IncreSolver::debug = false;
+
 const char * IncreSolver::Orac_file_path;
 const char * IncreSolver::Came_file_path;
 const char * IncreSolver::target_cnf = "target.cnf";
+const char * IncreSolver::Solver_solution = "NULL";
 
 SimpSolver IncreSolver::S;
 SimpSolver IncreSolver::S_final;
@@ -206,7 +210,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
 
     load_gateTypeDict(gateTypeDict);
 
-    cout << "Reading data from " << CamePath << endl;
+    if(debug == true) cout << "Reading data from " << CamePath << endl;
 
     Vlines = ReadByColon(CamePath);
 //======================================================================================================================
@@ -219,7 +223,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
         if((line.find("input") != string::npos) && (line.find("//") == string::npos))
         {
             vector<string> PIs;
-            cout << "Processing input" << endl;
+            if(debug == true) cout << "Processing input" << endl;
             strip_all(line, "input");
             strip_all(line, " ");
             SplitString(line, PIs, ",");          
@@ -240,7 +244,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
         else if((line.find("output") != string::npos) && (line.find("//") == string::npos))
         {
             vector<string> POs;
-            cout << "Processing output " << endl;
+            if(debug == true) cout << "Processing output " << endl;
             strip_all(line, "output");
             strip_all(line, " ");
             SplitString(line, POs, ",");
@@ -260,7 +264,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
         else if((line.find("wire") != string::npos) && (line.find("//") == string::npos))
         {
             vector<string> wires;
-            cout << "Processing wire" << endl;
+            if(debug == true) cout << "Processing wire" << endl;
             strip_all(line, "wire");
             strip_all(line, " ");
             SplitString(line, wires, ",");
@@ -286,7 +290,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
             }
             else
             {
-                cout << "verilog format is not acceptable!!!" << endl;
+                if(debug == true) cout << "Verilog format is not acceptable!!!" << endl;
                 exit(-1);
             }
             vector<string> netname;
@@ -373,7 +377,6 @@ void MiterSolver::genCameCNF(char const * CamePath)
         camCBindex += *iter;
     }
     camPOindex = posIndex;
-    print_vector(camPOindex, "camPOindex");
     baseMtrVarNum = varNum;
     miterOutIndex = varNum; 
 
@@ -385,7 +388,7 @@ void MiterSolver::buildmiter()
 {
     genCameCNF(Came_file_path);
     // genOracCNF(Orac_file_path, baseMtrVarNum + 1);
-    cout << "start to buildmiter" << endl;
+    if(debug == true) cout << "Start to buildmiter" << endl;
 //========================================================================================================================
 //add both Oracle and miter to single circuit
     cktTotVarNum = baseMtrVarNum;
@@ -402,7 +405,6 @@ void MiterSolver::buildmiter()
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline2);
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline1);
     print_vector(baseCnfMtrLs, target_cnf);
-    print_vector(baseCnfMtrLs,"test_miter");
 //========================================================================================================================
 //update miterCBindex to include duplication's CB
     for(vector<int>::iterator pbitIndex = camCBindex.begin(); pbitIndex != camCBindex.end(); ++pbitIndex)
@@ -471,7 +473,7 @@ void AddonSolver::queryOrac()
 	run_shell();
 	usleep(1000000);
 	parse_PO();
-	print_solution("solution");
+	if(debug == true) print_solution("Solution_temp");
 }
 
 void AddonSolver::run_shell()
@@ -482,18 +484,17 @@ void AddonSolver::run_shell()
 	char buffer[1024];
 	strncpy(buffer, sh, sizeof(buffer));
 	strncat(buffer, full_path, sizeof(buffer));
-	cout << "Runing: " << buffer << endl; 
+	if(debug == true) cout << "Runing: " << buffer << endl; 
 	FILE *status = popen(buffer, "r");
-	if(!status) cout << "create another thread failed" << endl;
+	if(!status) {cout << "create another thread failed" << endl; exit(-1);}
 }
+
 void AddonSolver::print_solution(const char * path)
 {
 
     ofstream outfile(path);
     outfile << "------The found PI vector that differentiate CB" << endl;
-    cout << "------The found PI vector that differentiate CB" << endl;
-    outfile << "\n-----is\n";
-    cout << "\n-----is\n";
+    cout << "------The found PI vector that differentiate CB is" << endl;
     print_map(PItemp, outfile);
     outfile << "The corresponding primary outputs are:" << endl;
     cout << "The corresponding primary outputs are:" << endl;
@@ -528,12 +529,10 @@ void AddonSolver::solve()   // used to solve both miter and addons
     S.eliminate(true);
     if(!S.okay())
     {
-        cout << "UNSAT\n" << endl;
+        if(debug == true) cout << "UNSAT\n" << endl;
     }
 
-//    bool myRes = S.solve(mkLit(miterOutIndex - 1, false));
-//   if(myRes == true) ret = l_True;
-//    if(myRes == false) ret = l_False;
+
     vec<Lit> dummy;
     ret = S.solveLimited(dummy);
 
@@ -545,7 +544,7 @@ void AddonSolver::continue_solving()
 {
     if(ret == l_True)
     {
-    	cout << "continue Solving" << endl;
+    	if(debug == true) cout << "Continue Solving" << endl;
         OracPOs.push_back(POtemp);
 
         //========================================================================================================================
@@ -675,6 +674,9 @@ void SoluFinder::find_solu()
     print_vector(finalCNF, "finalSolu.cnf");
     solve_it();
     print_solution();
+    remove("PI.txt");
+    remove("finalSolu.cnf");
+    remove("target.cnf");
 }
 void SoluFinder::case_1()
 {
@@ -717,17 +719,17 @@ void SoluFinder::case_2()
 
 void SoluFinder::solve_it()
 {
-     cout << "start find finalSolu" << endl;
-    fstream outfile("Solver_solution");
+    if(debug == true) cout << "Start finding finalSolu" << endl;
     gzFile in = gzopen("finalSolu.cnf", "rb");
     parse_DIMACS(in, S_final);
     gzclose(in);
     freeze();
     S_final.eliminate(true);
+    string content = "";
     if(!S_final.okay())
     {
-        outfile << "UNSAT\n" << endl;
-        cout << "pre find: UNSAT" << endl;
+        content += "UNSAT\n";
+        if(debug == true) cout << "pre find: UNSAT" << endl;
     }
     
     vec<Lit> dummy;
@@ -735,23 +737,30 @@ void SoluFinder::solve_it()
 
     if(ret == l_True)
     {
-        outfile << "SAT" << endl;
-        cout << "SAT" << endl;
+        content += "SAT\n";
+        if(debug == true) cout << "SAT" << endl;
         for(int i = 0; i < S_final.nVars(); i++)
         {
             if(S_final.model[i] != l_Undef)
             {
-                outfile << " ";
-                if(S_final.model[i] == l_True) outfile << "" + tostring(i + 1);
-                else outfile << "-" + tostring(i + 1);
+                content += " ";
+                if(S_final.model[i] == l_True) content += "" + tostring(i + 1);
+                else content += "-" + tostring(i + 1);
                 
             }
         }
-        outfile << " 0" << endl;
+        content += " 0\n";
     }
-    else if(ret == l_False) outfile << "UNSAT" << endl;
-    else    outfile << "INDET" << endl;
-    outfile.close();   
+    else if(ret == l_False) content += "UNSAT\n";
+    else    content += "INDET\n";
+
+ 	string temp(Solver_solution);
+    if(temp != "NULL") 
+    {
+    	ofstream outfile(Solver_solution);
+    	outfile << content;
+    	outfile.close();   
+    }
 
 } 
 
@@ -789,7 +798,8 @@ Support::Support(int one, char ** two)
 {
 	int argc = one;
 	char **argv = two;
-    a.add<int>("verb", 'v', "level of verb", false, 1, cmdline::range(1,3));
+    a.add<bool>("debug", 'd', "change to debug mode", false, false);
+    a.add<string>("outfile",'o', "export solution to given file", false, "NULL");
     a.footer("<Cam.v> <Orac.sh>");
     a.parse_check(argc, argv);
 
@@ -805,6 +815,9 @@ Support::Support(int one, char ** two)
 	    if((access(a.rest()[1].c_str(), 04)) != -1){Orac_file_path = realpath(a.rest()[1].c_str(), NULL);}
 	    else{cout << "error: Shell file is not existed or read prohibited!!!\n"; exit(200);}
     }
+
+    debug = a.get<bool>("debug");
+    Solver_solution = a.get<string>("outfile").c_str();
 
 }
 

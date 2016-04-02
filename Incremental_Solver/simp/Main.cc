@@ -69,6 +69,6 @@ int main(int argc, char** argv)
 // find final Solution
     SoluFinder finder;
     finder.find_solu();
-    cout << "finished" << endl;
+    cout << "\n\nThank you for using!!!" << endl;
     return 0;
 }
