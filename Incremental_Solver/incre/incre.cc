@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
 #include "incre/incre.h"
 #include "simp/SimpSolver.h"
 #include "incre/tools.h"
@@ -31,6 +32,9 @@ using namespace std;
 lbool IncreSolver::ret = l_False;
 int IncreSolver::niter = 1;
 bool IncreSolver::debug = false;
+clock_t IncreSolver::start = clock();									// indicator: starting time
+clock_t IncreSolver::totoal_all = 0;										// indicator: all thread total time
+clock_t IncreSolver::total_sub = 0;										// indicator: sub-thread total time
 
 const char * IncreSolver::Orac_file_path;
 const char * IncreSolver::Came_file_path;
@@ -74,6 +78,15 @@ IncreSolver::~IncreSolver()
 lbool IncreSolver::check_ret()
 {
     return ret;
+}
+
+void IncreSolver::print_state()
+{
+	cout << "============================[ Problem Statistics ]=============================" << endl;
+	cout << "|                                                                             |" << endl;
+	cout << "|\tTotal CPU time: \t\t\t" << ((float)totoal_all)/CLOCKS_PER_SEC << " s" << endl;
+	cout << "|\tMain CPU time:  \t\t\t" << ((float)totoal_all - (float)total_sub)/CLOCKS_PER_SEC << " s" << endl;
+	cout << "===============================================================================" << endl;
 }
 vector<string> IncreSolver::assign_value(map<int, string> &value_map, vector<int> what)
 {
@@ -485,8 +498,11 @@ void AddonSolver::run_shell()
 	strncpy(buffer, sh, sizeof(buffer));
 	strncat(buffer, full_path, sizeof(buffer));
 	if(debug == true) cout << "Runing: " << buffer << endl; 
+	clock_t start_branch = clock();
 	FILE *status = popen(buffer, "r");
 	if(!status) {cout << "create another thread failed" << endl; exit(-1);}
+	clock_t end_branch = clock();
+	total_sub += end_branch - start_branch;
 }
 
 void AddonSolver::print_solution(const char * path)
@@ -755,19 +771,21 @@ void SoluFinder::solve_it()
     else    content += "INDET\n";
 
  	string temp(Solver_solution);
-    if(temp != "NULL") 
+    if (debug) 
     {
     	ofstream outfile(Solver_solution);
     	outfile << content;
     	outfile.close();   
     }
 
+    totoal_all = clock() - start;
+
 } 
 
 void SoluFinder::print_solution()
 {
 	
-    cout << "Solution is:" << endl;
+    cout << "SOLUTION IS:" << endl;
     for(vector<int>::iterator node = camCBindex.begin(); node != camCBindex.end(); ++node)
     {
         if(S_final.model[*node - 1] != l_Undef)
@@ -798,8 +816,7 @@ Support::Support(int one, char ** two)
 {
 	int argc = one;
 	char **argv = two;
-    a.add<bool>("debug", 'd', "change to debug mode", false, false);
-    a.add<string>("outfile",'o', "export solution to given file", false, "NULL");
+    a.add("debug", 'd', "change to debug mode");
     a.footer("<Cam.v> <Orac.sh>");
     a.parse_check(argc, argv);
 
@@ -816,8 +833,8 @@ Support::Support(int one, char ** two)
 	    else{cout << "error: Shell file is not existed or read prohibited!!!\n"; exit(200);}
     }
 
-    debug = a.get<bool>("debug");
-    Solver_solution = a.get<string>("outfile").c_str();
+    debug = a.exist("debug");
+    Solver_solution = "Solver_solution";
 
 }
 

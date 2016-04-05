@@ -69,6 +69,7 @@ int main(int argc, char** argv)
 // find final Solution
     SoluFinder finder;
     finder.find_solu();
-    cout << "\n\nThank you for using!!!" << endl;
+    IncreSolver::print_state();
+    cout << "\nThank you for using!!!" << endl;
     return 0;
 }

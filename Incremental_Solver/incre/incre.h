@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <time.h>
 #include "simp/SimpSolver.h"
 #include "utils/System.h"
 #include "utils/ParseUtils.h"
@@ -26,6 +27,9 @@ class IncreSolver
 public:
 	static lbool ret;							// indicator: indicate whether this iteration in addon is sat or not
 	static int niter;							// indicator: number of iterations
+	static clock_t start;						// indicator: starting time
+	static clock_t totoal_all;					// indicator: all thread total time
+	static clock_t total_sub;					// indicator: sub-thread total time
 	IncreSolver();
 	~IncreSolver();
 
@@ -35,9 +39,11 @@ public:
 	static vector<map<int, string> > OracPOs;	// store all temp POs
 
 	static lbool check_ret();					// tools: check ret before any instanization
-
+	static void print_state();					// tools: print info inlcuding CPU, Memroy, time ,iterations
 	map<int, string> PItemp;			// store temporary (only in this iteration) miter PI index->value
 	map<int, string> POtemp;			// store temporary (only in this iteration) oracle PO index->value
+
+
 
 protected:
 	static bool debug;							// level of verb
