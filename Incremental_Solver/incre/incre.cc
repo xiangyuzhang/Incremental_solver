@@ -3,7 +3,7 @@
 #include <fstream>
 #include <algorithm>
 #include <string>
-
+#include <cmath>
 #include <stdio.h>
 #include <sys/types.h>
 #include <errno.h>
@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <algorithm>
 #include "incre/incre.h"
 #include "simp/SimpSolver.h"
 #include "incre/tools.h"
@@ -84,8 +85,9 @@ void IncreSolver::print_state()
 {
 	cout << "============================[ Problem Statistics ]=============================" << endl;
 	cout << "|                                                                              " << endl;
-	cout << "|\tTotal CPU time: \t\t\t" << ((float)totoal_all)/CLOCKS_PER_SEC << " s" << endl;
-	cout << "|\tMain CPU time:  \t\t\t" << ((float)totoal_all - (float)total_sub)/CLOCKS_PER_SEC << " s" << endl;
+	cout << "|\tTotal CPU time:    \t\t\t" << ((float)totoal_all)/CLOCKS_PER_SEC << " s" << endl;
+	cout << "|\tMain CPU time:     \t\t\t" << ((float)totoal_all - (float)total_sub)/CLOCKS_PER_SEC << " s" << endl;
+    cout << "|\tNum of iteration(s)\t\t\t" << niter << endl;
 	cout << "===============================================================================" << endl;
 }
 vector<string> IncreSolver::assign_value(map<int, string> &value_map, vector<int> what)
@@ -209,6 +211,68 @@ vector<string> MiterSolver::connectPO_xor(vector<int> &posIndex, int &camVarNum,
     return cnfLines;
 }
 
+vector<string> MiterSolver::forbidden_bits(string line, vector<int> target)
+{
+    // acquire allow info
+    int set_length;
+    vector<string> allowed_list;
+    vector<string> complete_list;
+    vector<string> forbidden_list;
+    vector<string> final;
+    if(line.find("RE__ALLOW") != string::npos)
+    {
+        smatch result;
+        regex pattern("(\\().*(\\))");
+        regex_search(line, result, pattern);
+        string allow_string = result[0].str();
+        strip_all(allow_string,"(");
+        strip_all(allow_string, ")");
+        SplitString(allow_string, allowed_list, ",");
+    
+        // get forbidden info
+        set_length = allowed_list[0].length();
+        for(int i = 0; i < pow(2,set_length); i++)
+        {
+            complete_list.push_back(toBinary(i, set_length));
+        }
+
+        for(vector<string>::iterator CB = complete_list.begin(); CB != complete_list.end(); ++CB)
+        {
+            auto iter = find(allowed_list.begin(), allowed_list.end(), *CB);
+            if(iter == allowed_list.end())
+            {
+                forbidden_list.push_back(*CB);
+            }
+        }
+        // assign
+        for( auto type = forbidden_list.begin(); type != forbidden_list.end(); ++type)
+            {
+                for(auto group = target.begin(); group != target.end(); )
+                {
+                    string temp = "";
+                    for(unsigned int value = 0; value < (*type).size(); value++ )
+                    {
+                        if((*type)[value] == '1')
+                        {
+                            temp += "-" + to_string(*group) + " ";
+                        }
+                        else if((*type)[value] == '0')
+                        {
+                            temp += to_string(*group) + " ";
+                        }
+                        group++;
+                    }
+                    temp += " 0\n";
+                    final.push_back(temp);
+                }
+            }
+        return final;
+    }
+    else
+    {
+        return final;
+    }
+}
 void MiterSolver::genCameCNF(char const * CamePath)
 {
     vector<string> cnfLines;
@@ -233,8 +297,10 @@ void MiterSolver::genCameCNF(char const * CamePath)
     {
         string line= *iter;
         strip_all(line, "\n");
-        if((line.find("input") != string::npos) && (line.find("//") == string::npos))
+        if((line.find("input") != string::npos))
         {
+            if(line.find("RE__PI") != string::npos) strip_all(line, "//RE__PI");
+            if(line.find("RE__ALLOW") != string::npos) line = line.substr(0, line.find("//RE__ALLOW"));
             vector<string> PIs;
             if(debug == true) cout << "Processing input" << endl;
             strip_all(line, "input");
@@ -246,12 +312,15 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 strip_all(*pi, "\\");
                 strip_all(*pi, "[");
                 strip_all(*pi, "]");
+                strip_all(*pi, " ");
                 varIndexDict.insert(std::pair<string, int>(*pi, varIndex));
                 indexVarDict.insert(std::pair<int, string>(varIndex, *pi));
                 tmpPis.push_back(varIndex);
                 varIndex++;                
             }  
             inputs.push_back(tmpPis);  
+            forbidden_string += forbidden_bits(*iter, tmpPis);
+
         }
 
         else if((line.find("output") != string::npos) && (line.find("//") == string::npos))
@@ -330,7 +399,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
         
         }                    
     }
-//    print_vector(cnFile, "original_cam");
+
     camVarNum = varIndex - 1;
     camCNFile = cnFile;
 //========================================================================================================================
@@ -413,11 +482,15 @@ void MiterSolver::buildmiter()
 //    connect_orac_cam.insert(connect_orac_cam.begin(), "c connect oracle PI with cam PI\n");
     string cmmtline1 = "c this file is generated by buildmiter\n";
     string cmmtline2 = "c generated on " + get_localtime();
-    string problemLn = "p cnf " + tostring(cktTotVarNum) + " " + tostring(baseCnfMtrLs.size() - 4) + "\n";
+    string problemLn = "p cnf " + tostring(cktTotVarNum) + " " + tostring(baseCnfMtrLs.size() + forbidden_string.size() - 4) + "\n";
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), problemLn);
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline2);
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline1);
+    string cmmtline3 = "c this is forbidden constrains\n";
+    forbidden_string.insert(forbidden_string.begin(), cmmtline3);
+    baseCnfMtrLs += forbidden_string;
     print_vector(baseCnfMtrLs, target_cnf);
+    print_vector(baseCnfMtrLs, "milter");
 //========================================================================================================================
 //update miterCBindex to include duplication's CB
     for(vector<int>::iterator pbitIndex = camCBindex.begin(); pbitIndex != camCBindex.end(); ++pbitIndex)

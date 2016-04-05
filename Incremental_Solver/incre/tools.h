@@ -42,6 +42,26 @@ inline void SplitString(const std::string& s, std::vector<std::string>& v, const
         v.push_back(s.substr(pos1));
     }
 
+inline string toBinary(int n, int length)
+{
+    string r;
+    string result;
+    if( n == 0)
+    {
+        r = "0";
+    }
+    while( n!= 0)
+    {
+        r = (n%2 == 0 ? "0":"1") + r;
+        n/=2;
+    }
+    result = r;
+    for(unsigned int i = 0; i < length - r.length(); i++)
+    {
+        result = "0" + result;
+    }
+    return result;
+}
 
 inline string Readall(const char* path)
     {

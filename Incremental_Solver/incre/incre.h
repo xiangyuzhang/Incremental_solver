@@ -104,6 +104,7 @@ private:
 	vector<vector<int> > inputs;																// same to inputsInt
 	vector<int> oracPONodes2grab;
 	vector<int> OracPIndex;
+	vector<string> forbidden_string;
 		
 public:
 	MiterSolver();															// constructor: initialize base class and milterSolver
@@ -113,7 +114,7 @@ private:
 	void genOracCNF(char const * OracPath, int start);											// main: parse "OracPath", generate CNF, index start on "start"
 	void genCameCNF(char const * CamePath);														// main: parse "CamePath" and generate CNF
 	void genCameCNF(char const * CamePath, string Muxstyle);									// main: used for later
-
+	vector<string> forbidden_bits(string line, vector<int> target);													// main: process forbidden options
 	vector<string> connectPO_xor(vector<int> &posIndex, int &camVarNum, int &xorInt);			// tools: connect POs using xor, used only for two duplicated circuit
 };
 
