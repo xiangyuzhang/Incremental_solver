@@ -83,7 +83,7 @@ lbool IncreSolver::check_ret()
 void IncreSolver::print_state()
 {
 	cout << "============================[ Problem Statistics ]=============================" << endl;
-	cout << "|                                                                             |" << endl;
+	cout << "|                                                                              " << endl;
 	cout << "|\tTotal CPU time: \t\t\t" << ((float)totoal_all)/CLOCKS_PER_SEC << " s" << endl;
 	cout << "|\tMain CPU time:  \t\t\t" << ((float)totoal_all - (float)total_sub)/CLOCKS_PER_SEC << " s" << endl;
 	cout << "===============================================================================" << endl;
@@ -484,7 +484,6 @@ void AddonSolver::queryOrac()
 {
 	remove("PO.txt");
 	run_shell();
-	usleep(1000000);
 	parse_PO();
 	if(debug == true) print_solution("Solution_temp");
 }
@@ -493,14 +492,21 @@ void AddonSolver::run_shell()
 {
 	const char *full_path = Orac_file_path;
 	const char *sh = "sh ";
-
+    const char *dum = " > /dev/null 2>&1";
 	char buffer[1024];
 	strncpy(buffer, sh, sizeof(buffer));
 	strncat(buffer, full_path, sizeof(buffer));
+    if(!debug)
+    {
+        strncat(buffer, dum, sizeof(buffer));
+ 
+    }
 	if(debug == true) cout << "Runing: " << buffer << endl; 
 	clock_t start_branch = clock();
-	FILE *status = popen(buffer, "r");
-	if(!status) {cout << "create another thread failed" << endl; exit(-1);}
+    system(buffer);
+//	FILE *status = popen(buffer, "r");
+//	if(!status) {cout << "create another thread failed" << endl; exit(-1);}
+//    pclose(status);
 	clock_t end_branch = clock();
 	total_sub += end_branch - start_branch;
 }
