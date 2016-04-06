@@ -130,10 +130,11 @@ class Oracle:
     def __parse_PI(self):
         with open(self.PI_path, "r") as infile:
             lines = infile.readlines()
-        PI_names = lines[0].split("\t")[:-1]
-        PI_values = lines[1].split("\t")[:-1]
+        PI_names = lines[0].replace("\n","").split("\t")[:-1]
+        PI_values = lines[1].replace("\n","").split("\t")
         for index in range(0, len(PI_names)):
-            self.PI_temp[self.varIndexDict[PI_names[index]]] = PI_values[index]
+            if PI_names[index] != "CONST1" and PI_names[index] != "CONST0":
+                self.PI_temp[self.varIndexDict[PI_names[index]]] = PI_values[index]
 
     def __assign(self):
         for key in self.PI_temp.keys():
@@ -212,6 +213,7 @@ class Oracle:
                     self.posIndex.append(varIndex)
                     # poVars.append(po)
                     varIndex += 1
+
             elif 'wire' in line and not '//' in line:
                 wires = re.search(r'(?<=wire )(.*)(?=$)', line).group().replace(' ', '').split(',')
                 for w in wires:
