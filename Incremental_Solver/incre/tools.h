@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <regex>
+#include <sys/resource.h>
 
 
 
@@ -16,7 +17,17 @@ using namespace std;
 namespace Incre
 {
 
+inline long get_memUsage_mb()
+{
+    int who = RUSAGE_SELF;
+    struct rusage usage;
 
+
+
+    getrusage(who, &usage);
+
+    return usage.ru_maxrss/1024;
+}
 
 inline string get_localtime()
     {
@@ -41,7 +52,19 @@ inline void SplitString(const std::string& s, std::vector<std::string>& v, const
       if(pos1 != s.length())
         v.push_back(s.substr(pos1));
     }
+inline string stripComments(string in)
+{
+    regex pattern("\\/\\/(?!RE__ALLOW).*\\n");
+    smatch m;
+    regex_search(in,m,pattern);
 
+    while(regex_search(in,m,pattern))
+    {
+        in = in.replace(in.find(m[0].str()), m[0].str().length(), "");
+    }
+
+    return in;
+}
 inline string toBinary(int n, int length)
 {
     string r;
@@ -123,7 +146,7 @@ inline void print_map(map<int, string>& input_map)
     	string read_all;
     	read_all = Readall(path);
     	strip_all(read_all, "\r");
-    	SplitString(read_all, result, ";\n");
+    	SplitString(read_all, result, ";");
     	return result;
     }
 inline vector<string> find_netname(string gate)

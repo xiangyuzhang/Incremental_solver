@@ -81,15 +81,22 @@ lbool IncreSolver::check_ret()
     return ret;
 }
 
+
+
 void IncreSolver::print_state()
 {
 	cout << "============================[ Problem Statistics ]=============================" << endl;
 	cout << "|                                                                              " << endl;
-	cout << "|\tTotal CPU time:    \t\t\t" << ((float)totoal_all)/CLOCKS_PER_SEC << " s" << endl;
-	cout << "|\tMain CPU time:     \t\t\t" << ((float)totoal_all - (float)total_sub)/CLOCKS_PER_SEC << " s" << endl;
-    cout << "|\tNum of iteration(s)\t\t\t" << niter << endl;
+	cout << "|\tTotal CPU time:      \t\t\t" << ((float)totoal_all)/CLOCKS_PER_SEC << " s" << endl;
+	cout << "|\tMain CPU time:       \t\t\t" << ((float)totoal_all - (float)total_sub)/CLOCKS_PER_SEC << " s" << endl;
+    cout << "|\tNum of iteration(s)  \t\t\t" << niter << endl;
+    cout << "|\tPhysical Memory used:\t\t\t" << get_memUsage_mb() << " Mb" << endl;
 	cout << "===============================================================================" << endl;
 }
+
+
+
+
 vector<string> IncreSolver::assign_value(map<int, string> &value_map, vector<int> what)
 {
     vector<string> result;
@@ -277,6 +284,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
 {
     vector<string> cnfLines;
     vector<string> Vlines;
+
     vector<vector<int> > inputs;
     map<string, int> gateTypeDict;
     vector<string> cnFile;
@@ -290,54 +298,74 @@ void MiterSolver::genCameCNF(char const * CamePath)
 
     if(debug == true) cout << "Reading data from " << CamePath << endl;
 
-    Vlines = ReadByColon(CamePath);
+    SplitString(stripComments(Readall(CamePath)), Vlines,";");
+    
 //======================================================================================================================
 //parse the first camouflaged circuit 
 
     for(vector<string>::iterator iter = Vlines.begin(); iter != Vlines.end(); ++iter)
     {
         string line= *iter;
+        strip_all(line, "\r");
         strip_all(line, "\n");
         if((line.find("input") != string::npos))
-        {
-            if(line.find("RE__PI") != string::npos) strip_all(line, "//RE__PI");
-            if(line.find("RE__ALLOW") != string::npos) line = line.substr(0, line.find("//RE__ALLOW"));
+        {     
+
+               
+            string next_line = *(iter + 1);
+            string line_with_allow;
+            bool has_allowBits = false;
+            vector<string> PIs;         
+            vector<int> tmpPis;
+
             if(line.find("CONST1") != string::npos) has_const1 = true;
             if(line.find("CONST0") != string::npos) has_const0 = true;
-            vector<string> PIs;
-            if(debug == true) cout << "Processing input" << endl;
+
+            if(next_line.find("RE__ALLOW") != string::npos)
+            {
+                has_allowBits = true;
+                line_with_allow = line + next_line;
+            }
+
             strip_all(line, "input");
             strip_all(line, " ");
-            SplitString(line, PIs, ",");          
-            vector<int> tmpPis;
+            SplitString(line, PIs, ","); 
+
             for(vector<string>::iterator pi = PIs.begin(); pi != PIs.end(); ++pi)
             {
-                strip_all(*pi, "\\");
                 strip_all(*pi, "[");
                 strip_all(*pi, "]");
                 strip_all(*pi, " ");
+                strip_all(*pi, "\t");
                 varIndexDict.insert(std::pair<string, int>(*pi, varIndex));
                 indexVarDict.insert(std::pair<int, string>(varIndex, *pi));
                 tmpPis.push_back(varIndex);
-                varIndex++;                
+                varIndex++;  
             }  
-            inputs.push_back(tmpPis);  
-            forbidden_string += forbidden_bits(*iter, tmpPis);
+            inputs.push_back(tmpPis); 
+
+            if(has_allowBits)
+            {
+                forbidden_string += forbidden_bits(line_with_allow, tmpPis);
+            }
 
         }
 
         else if((line.find("output") != string::npos) && (line.find("//") == string::npos))
         {
+
             vector<string> POs;
-            if(debug == true) cout << "Processing output " << endl;
+
             strip_all(line, "output");
             strip_all(line, " ");
+
             SplitString(line, POs, ",");
             for(vector<string>::iterator po = POs.begin(); po != POs.end(); ++po)
             {
-                strip_all(*po, "\\");
                 strip_all(*po, "[");
                 strip_all(*po, "]"); 
+                strip_all(*po, " ");
+                strip_all(*po, "\t");
 //              cout << *po << endl;
                 posIndex.push_back(varIndex);
                 varIndexDict.insert(std::pair<string,int>(*po, varIndex));
@@ -348,39 +376,49 @@ void MiterSolver::genCameCNF(char const * CamePath)
 
         else if((line.find("wire") != string::npos) && (line.find("//") == string::npos))
         {
+
             vector<string> wires;
-            if(debug == true) cout << "Processing wire" << endl;
+
             strip_all(line, "wire");
             strip_all(line, " ");
             SplitString(line, wires, ",");
+
             for(vector<string>::iterator w = wires.begin(); w != wires.end(); ++w)
             {
-                strip_all(*w, "\\");
                 strip_all(*w, "[");
                 strip_all(*w, "]"); 
-                strip_all(*w, "\\t");
+                strip_all(*w, " ");
+                strip_all(*w, "\t");
                 varIndexDict.insert(std::pair<string,int>(*w, varIndex));
                 indexVarDict.insert(std::pair<int, string>(varIndex, *w));
                 varIndex++;             
             }
         }
         
-        else if((line != "") && (line.front() != '/') && (line.find("module") == string:: npos))
+
+        else if((line != "") && (line.find("RE__ALLOW") == string::npos) &&(line.find("module") == string:: npos))
         {
+            string report = line;
             string gate;
             vector<string> cnfLines;
+            vector<string> netname;
+            vector<int> lineIn;
+            int lineOut;
+
             if((line.find(".") != string::npos) && (line.find("(") != string::npos))
             {
                 gate = find_gatetype(line);
             }
             else
             {
-                if(debug == true) cout << "Verilog format is not acceptable!!!" << endl;
+                if(debug == true) 
+                    {
+                        cout << "Verilog format is not acceptable!!!" << endl;
+                        cout << "illegal line is: " << report << endl;
+                    }
                 exit(-1);
             }
-            vector<string> netname;
-            vector<int> lineIn;
-            int lineOut;
+
 
             netname = find_netname(line);
             lineOut = varIndexDict[netname.back()];
@@ -388,8 +426,8 @@ void MiterSolver::genCameCNF(char const * CamePath)
             {
                 lineIn.push_back(varIndexDict[*iter]);
             }
+
             strip_all(gate," ");
-            strip_all(gate,"\n");
             strip_all(gate,"\t");
             int caseNo = gateTypeDict[gate];
 
@@ -399,10 +437,10 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 cnFile.push_back(*iter);
             }
             gateCnt++;
-        
-        }                    
-    }
 
+
+        }   
+    }
     camVarNum = varIndex - 1;
     camCNFile = cnFile;
 //========================================================================================================================
@@ -455,10 +493,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
     if(has_const1) final_miter.push_back(tostring(varIndexDict["CONST1"]) + " 0\n");
 //========================================================================================================================
 //add file info
-    int clauseNum = final_miter.size() - 5;
-    string cmmtline1 = "c This file is generated by genCameCNF\n";
-    string cmmtline2 = "c Generated on " + get_localtime();
-    string firstLine = "p cnf " + tostring(varNum) + " " + tostring(clauseNum) + " \n";
+
 
     baseCnfMtrLs = final_miter;
     camPIndex = inputs.front();
@@ -484,13 +519,10 @@ void MiterSolver::buildmiter()
     cktTotVarNum = baseMtrVarNum;
 //========================================================================================================================
 //connect PIs oracle and miter
-//    vector<string> connect_orac_cam;
-//    vector<string> miter_with_orac;
-//    connect_orac_cam = connectNets(camPIndex, miterOutIndex);           //using known start_index to connect two circuit
-//    connect_orac_cam.insert(connect_orac_cam.begin(), "c connect oracle PI with cam PI\n");
+
     string cmmtline1 = "c this file is generated by buildmiter\n";
     string cmmtline2 = "c generated on " + get_localtime();
-    string problemLn = "p cnf " + tostring(cktTotVarNum) + " " + tostring(baseCnfMtrLs.size() + forbidden_string.size() - 4) + "\n";
+    string problemLn = "p cnf " + tostring(cktTotVarNum) + " " + tostring(baseCnfMtrLs.size() + forbidden_string.size() - 3) + "\n";
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), problemLn);
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline2);
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline1);
@@ -940,6 +972,7 @@ Support::Support(int one, char ** two)
     Solver_solution = "Solver_solution";
 
 }
+
 
 
 

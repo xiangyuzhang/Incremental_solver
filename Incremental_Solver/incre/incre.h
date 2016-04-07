@@ -90,7 +90,6 @@ protected:
 	void grabnodes();															// main: obtain values from "S"  
 	vector<int> get_index(vector<int> source, int correction);					// tools: used to get duplication's PI, PO, CB index. based on "source", calculate with "correction", store in "target" 
 	map<string, int> netname_to_value(vector<string> nets);						// tools: used to search nets' value;
-
 };
 
 
@@ -171,6 +170,7 @@ private:
 
 public:
 	Support(int argc, char ** argv);
+
 	void parse_argv();
 
 };
