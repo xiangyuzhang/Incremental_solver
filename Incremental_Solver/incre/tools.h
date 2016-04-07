@@ -8,7 +8,6 @@
 #include <fstream>
 #include <iostream>
 #include <regex>
-#include <sys/resource.h>
 
 
 
@@ -17,17 +16,6 @@ using namespace std;
 namespace Incre
 {
 
-inline long get_memUsage_mb()
-{
-    int who = RUSAGE_SELF;
-    struct rusage usage;
-
-
-
-    getrusage(who, &usage);
-
-    return usage.ru_maxrss/1024;
-}
 
 inline string get_localtime()
     {
@@ -204,15 +192,6 @@ inline void print_vector(vector<int> list, const char * path)
         }
 }
 
-inline map<int, string>  index_to_netname(map<string, int>  source)
-{
-    map<int, string> result;
-    for(map<string, int>::iterator index = source.begin(); index != source.end(); index++)
-    {
-        result.insert(std::pair<int, string>(index->second, index->first));
-    }
-    return result;
-}
 
 template <typename T>
 std::vector<T> operator+(const std::vector<T> &A, const std::vector<T> &B)
