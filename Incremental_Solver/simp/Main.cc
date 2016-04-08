@@ -40,7 +40,10 @@ using namespace std;
 int main(int argc, char** argv)
 {
 
+try
+{
     Support support(argc, argv);
+
 //=================================================================================================================================
 // build miter based on income cam file
 
@@ -70,6 +73,12 @@ int main(int argc, char** argv)
     SoluFinder finder;
     finder.find_solu();
     IncreSolver::print_state();
-    cout << "\nThank you for using!!!" << endl;
+    finder.print_solution();
     return 0;
+} catch(...)
+{
+    cerr << "===============================================================================" << endl;
+    cerr << "FATAL ERROR, EXIT" << endl;
+
+}
 }

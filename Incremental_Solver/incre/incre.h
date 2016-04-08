@@ -12,7 +12,7 @@
 #include "utils/Options.h"
 #include "core/Dimacs.h"
 #include "incre/cmdline.h"
-
+#include "incre/progress.h"
 
 using namespace std;
 using namespace Minisat;
@@ -30,6 +30,7 @@ public:
 	static clock_t start;						// indicator: starting time
 	static clock_t totoal_all;					// indicator: all thread total time
 	static clock_t total_sub;					// indicator: sub-thread total time
+	static progress_t bar;							// 
 	IncreSolver();
 	~IncreSolver();
 
@@ -50,7 +51,7 @@ protected:
 	static const char  * Came_file_path;		// input Camouflage file path
 	static const char  * Orac_file_path;		// input Oracle file path
 	static const char  * target_cnf;			// output of buildmiter, input of solver, and output of addon
-	static const char  * Solver_solution;		// addon solution path or final solution path
+	static const char  * Solver_solution;		// final solution path
 
 	static vector<int> camPIndex;				// miter first circuit's PI, and also it the oracle's PI
 	static vector<int> camPOindex;				// PO index list
@@ -82,6 +83,7 @@ protected:
 	static SimpSolver S_final;					// used for solve finalSolue
 
 protected:
+	void print_progress(string info, int progress);
 
 	vector<string> duplicateCircuit(vector<string> cnFile, int start_index);		// tools: duplicate a circuit based on "cnFile", index start from "start_index"
 	vector<string> assign_value(map<int, string> &value_map, vector<int> what);	// tools: use "value_map" value to assign elements in "what"
@@ -106,7 +108,7 @@ private:
 	vector<string> forbidden_string;
 		
 public:
-	MiterSolver();															// constructor: initialize base class and milterSolver
+	MiterSolver();																				// constructor: initialize base class and milterSolver
 	~MiterSolver();																				// deconstructor
 	void buildmiter();																			// main: build CNF formatted miter and export to Miter_file_path
 private:
@@ -126,6 +128,7 @@ public:
 	SoluFinder();
 	~SoluFinder();
 	void find_solu();
+	void print_solution();																			// main: used to print out final
 
 private:
 	int num2dup = 0;
@@ -137,7 +140,6 @@ private:
 	void case_2();																					// main: build circuit, for the case that only one duplication needed
 	void solve_it();																				// main: used to solve and find finalSolution
 	void freeze();																					// main: used to setFrozen for camCBindex, so they will not be removed during simplification 
-	void print_solution();																			// main: used to print out final
 };
 
 

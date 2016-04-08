@@ -83,8 +83,6 @@ inline string Readall(const char* path)
         string strdata(beg, end);
         in.close(); 
 
-    //	cout << "Now start test" << endl;
-    //	cout << strdata << endl;
         return strdata;
     }
 
@@ -96,7 +94,6 @@ inline void strip_all(string& str,const string old_value)
     		if(str.find(old_value) != string::npos)
     		{
     			str.replace(str.find(old_value), old_value.length(), "");
- //   			cout << "replaced string is " << str << endl;
     		}
     		else
     		{
@@ -140,17 +137,14 @@ inline void print_map(map<int, string>& input_map)
 inline vector<string> find_netname(string gate)
 
     {
-//    	cout << "Test start" << endl;
     	string s = gate;
     	vector<string> container;
     	vector<string> netnames;
     	SplitString(s, container, "(");
     	for (vector<string>::iterator iter = container.begin(); iter != container.end(); ++iter) {
-    		//   cout << "The is the original line: " << *iter << endl;
     		smatch nets;
     		regex pattern("([^\\)]+)([\\)])");
     		regex_search(*iter, nets, pattern);
-    		//      cout << "Number of found:" << nets.size() << endl;
     		for (unsigned int i = 0; i < nets.size(); i++) {
     			if (nets[i].str().find(")") == string::npos) netnames.push_back(nets[i].str());
     		}
@@ -159,7 +153,6 @@ inline vector<string> find_netname(string gate)
     	}
 
     	for (vector<string>::iterator iter = netnames.begin(); iter != netnames.end(); ++iter) {
-    //	  cout << *iter << endl;
     	}
     	return netnames;
 
