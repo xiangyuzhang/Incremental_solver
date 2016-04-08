@@ -27,71 +27,77 @@ class IncreSolver
 public:
 	static lbool ret;							// indicator: indicate whether this iteration in addon is sat or not
 	static int niter;							// indicator: number of iterations
-	static clock_t start;						// indicator: starting time
-	static clock_t totoal_all;					// indicator: all thread total time
-	static clock_t total_sub;					// indicator: sub-thread total time
-	static progress_t bar;							// 
+
+	map<int, string> Solution;					// container: store final Solution
+
+	map<int, string> PItemp;					// container: store temporary (only in this iteration) miter PI index->value
+	map<int, string> POtemp;					// container: store temporary (only in this iteration) oracle PO index->value
+
+	static vector<map<int, string> > OracPIs;	// container: store all temp PIs 
+	static vector<map<int, string> > OracPOs;	// container: store all temp POs
+
 	IncreSolver();
 	~IncreSolver();
 
-	map<int, string> Solution;					// store final Solution
-
-	static vector<map<int, string> > OracPIs;	// store all temp PIs 
-	static vector<map<int, string> > OracPOs;	// store all temp POs
-
 	static lbool check_ret();					// tools: check ret before any instanization
 	static void print_state();					// tools: print info inlcuding CPU, Memroy, time ,iterations
-	map<int, string> PItemp;			// store temporary (only in this iteration) miter PI index->value
-	map<int, string> POtemp;			// store temporary (only in this iteration) oracle PO index->value
 
 
 
 protected:
-	static bool debug;							// level of verb
-	static const char  * Came_file_path;		// input Camouflage file path
-	static const char  * Orac_file_path;		// input Oracle file path
-	static const char  * target_cnf;			// output of buildmiter, input of solver, and output of addon
-	static const char  * Solver_solution;		// final solution path
 
-	static vector<int> camPIndex;				// miter first circuit's PI, and also it the oracle's PI
-	static vector<int> camPOindex;				// PO index list
-	static vector<int> OracPOndex;				
-	static vector<int> camCBindex;				// CB except duplicated circuit
-	static vector<int> miterCBindex;			// CB include duplicated circuit 
-	static vector<int> camCB2index;				// suplication's CB
-	static vector<int> nodes2grab;				// variable need to be frozen during incremental solving
-	static map<int, string> indexVarDict;		// store map of index to netname
-    static map<string, int> varIndexDict;		// store map of netname to index
 
-	map<int, string> CB1temp;			// store temporary (only in this iteration) original CB index->value 
-	map<int, string> CB2temp;			// store temporary (only in this iteration) duplication CB index->value
+	static bool debug;							// indicator: level of verb
 
-	vector<int> addon_CB1;				// store temporary (only in this iteration) first duplication CB index
-	vector<int> addon_CB2;				// store temporary (only in this iteration) second duplication CB index
-	vector<int> addon_PI1;				// store temporary (only in this iteration) first duplication CB index	
-	vector<int> addon_PI2;				// store temporary (only in this iteration) second duplication PI index
-	vector<int> addon_PO1;				// store temporary (only in this iteration) first duplication PO index
-	vector<int> addon_PO2;				// store temporary (only in this iteration) second duplication PO index
+	static const char  * Came_file_path;		// path: input Camouflage file path
+	static const char  * Orac_file_path;		// path: input Oracle SHELL file path
+	static const char  * target_cnf;			// path: output of buildmiter, input of solver, and output of addon
+	static const char  * Solver_solution;		// path: final solution path
 
-	static int cktTotVarNum;					// number of wire including miter and oracle circuit 
-	static int camVarNum;						// total number of wires + inputs + CBs + outputs in the original cam ckt
-	static int miterOutIndex; 					// last index of miter
+	static vector<int> camPIndex;				// container: miter first circuit's PI, and also it the oracle's PI
+	static vector<int> camPOindex;				// container: PO index list
+	static vector<int> camCBindex;				// container: CB except duplicated circuit
+	static vector<int> miterCBindex;			// container: CB include duplicated circuit 
+	static vector<int> camCB2index;				// container: suplication's CB
+	static vector<int> nodes2grab;				// container: variable need to be frozen during incremental solving
 
-	static vector<string> camCNFile;			// original Camouflaged circuit CNF
+	static map<int, string> indexVarDict;		// map: store map of index to netname
+    static map<string, int> varIndexDict;		// map: store map of netname to index
 
-	static SimpSolver S;						// used for solve add on
-	static SimpSolver S_final;					// used for solve finalSolue
+	map<int, string> CB1temp;					// map: store temporary (only in this iteration) original CB index->value 
+	map<int, string> CB2temp;					// map: store temporary (only in this iteration) duplication CB index->value
 
-protected:
-	void print_progress(string info, int progress);
+	vector<int> addon_CB1;						// container: store temporary (only in this iteration) first duplication CB index
+	vector<int> addon_CB2;						// container: store temporary (only in this iteration) second duplication CB index
+	vector<int> addon_PI1;						// container: store temporary (only in this iteration) first duplication CB index	
+	vector<int> addon_PI2;						// container: store temporary (only in this iteration) second duplication PI index
+	vector<int> addon_PO1;						// container: store temporary (only in this iteration) first duplication PO index
+	vector<int> addon_PO2;						// container: store temporary (only in this iteration) second duplication PO index
 
-	vector<string> duplicateCircuit(vector<string> cnFile, int start_index);		// tools: duplicate a circuit based on "cnFile", index start from "start_index"
-	vector<string> assign_value(map<int, string> &value_map, vector<int> what);	// tools: use "value_map" value to assign elements in "what"
-	vector<string> connectNets(vector<int> &piVec, int start_index);				// tools  using known start_index to connect two circuit
-	void grab(vector<int> &list, map<int,string> &target);						// tools: searching elements in list in solution list(S.model[], index left shifted by 1), assign into target
-	void grabnodes();															// main: obtain values from "S"  
-	vector<int> get_index(vector<int> source, int correction);					// tools: used to get duplication's PI, PO, CB index. based on "source", calculate with "correction", store in "target" 
-	map<string, int> netname_to_value(vector<string> nets);						// tools: used to search nets' value;
+	static int cktTotVarNum;					// values: number of wire including miter and oracle circuit 
+	static int camVarNum;						// values: total number of wires + inputs + CBs + outputs in the original cam ckt
+	static int miterOutIndex; 					// values: last index of miter
+
+	static vector<string> camCNFile;			// CNF: original Camouflaged circuit CNF
+	
+	static progress_t bar;						// indicator: process bar
+	static SimpSolver S;						// object: used for solve add on
+	static SimpSolver S_final;					// object: used for solve finalSolue
+
+	static clock_t start;						// indicator: starting time
+	static clock_t totoal_all;					// indicator: all thread total time
+	static clock_t total_sub;					// indicator: sub-thread total time
+
+	void print_progress(string info, int progress);										// tools: print progress
+	void grab(vector<int> &list, map<int,string> &target);								// tools: searching elements in list in solution list(S.model[], index left shifted by 1), assign into target
+	void grabnodes();																	// main: obtain values from "S"  
+																	
+	vector<string> duplicateCircuit(vector<string> cnFile, int start_index);			// tools: duplicate a circuit based on "cnFile", index start from "start_index"
+	vector<string> assign_value(map<int, string> &value_map, vector<int> what);			// tools: use "value_map" value to assign elements in "what"
+	vector<string> connectNets(vector<int> &piVec, int start_index);					// tools  using known start_index to connect two circuit
+	vector<int> get_index(vector<int> source, int correction);							// tools: used to get duplication's PI, PO, CB index. based on "source", calculate with "correction", store in "target"
+
+	map<string, int> netname_to_value(vector<string> nets);								// tools: used to search nets' value;
 };
 
 
@@ -99,13 +105,11 @@ class MiterSolver : public IncreSolver
 {
 
 private:
-	int baseMtrVarNum;																			// total variable number (original + duplicated + XOR + OR)
+	int baseMtrVarNum;																			// values: total variable number (original + duplicated + XOR + OR)
 
-	vector<string> baseCnfMtrLs;																// completed miter (including original Cam, duplicated Cam, XOR, Or)
-	vector<vector<int> > inputs;																// same to inputsInt
-	vector<int> oracPONodes2grab;
-	vector<int> OracPIndex;
-	vector<string> forbidden_string;
+	vector<string> baseCnfMtrLs;																// CNF: completed miter (including original Cam, duplicated Cam, XOR, Or)
+	vector<vector<int> > inputs;																// container: same to inputs (includes PI and CBs)
+	vector<string> forbidden_string;															// CNF: forbidden string
 		
 public:
 	MiterSolver();																				// constructor: initialize base class and milterSolver
@@ -114,8 +118,7 @@ public:
 private:
 	void genOracCNF(char const * OracPath, int start);											// main: parse "OracPath", generate CNF, index start on "start"
 	void genCameCNF(char const * CamePath);														// main: parse "CamePath" and generate CNF
-	void genCameCNF(char const * CamePath, string Muxstyle);									// main: used for later
-	vector<string> forbidden_bits(string line, vector<int> target);													// main: process forbidden options
+	vector<string> forbidden_bits(string line, vector<int> target);								// main: process forbidden options
 	vector<string> connectPO_xor(vector<int> &posIndex, int &camVarNum, int &xorInt);			// tools: connect POs using xor, used only for two duplicated circuit
 };
 
@@ -127,14 +130,15 @@ class SoluFinder : public IncreSolver
 public:
 	SoluFinder();
 	~SoluFinder();
-	void find_solu();
-	void print_solution();																			// main: used to print out final
+	void find_solu();																				// main: trigger final solution
+	void print_solution();																			// main: used to print final solution
 
 private:
 	int num2dup = 0;
 	int totVarNum = 0;
 	int clauseNum = 0;
-	vector<string> finalCNF;
+
+	vector<string> finalCNF;																		// CNF: store CNF to find final solution
 
 	void case_1();																					// main: build circuit, for the case that need more than one duplication
 	void case_2();																					// main: build circuit, for the case that only one duplication needed
@@ -151,17 +155,17 @@ public:
 	AddonSolver();											
 	~AddonSolver();
 	void start_solving();																// main: start a iteration
-	void print_solution(const char * path);										// tools: in current iteration, print out solution into "path"
-	void continue_solving();														// main: based on solution, generate new addon circuit
+	void continue_solving();															// main: based on solution, generate new addon circuit
 	void queryOrac();
 
 private:
-	void freeze();																// main: used to setFrozen for node2grab, so they will not be removed during simplification
-	void print_map(map<int,string> &container, ofstream &outfile);				// tools: export content of "container" to "outfile"
-	void solve();																// main: used to solve both miter and addconstrains
-	void export_PI();
-	void parse_PO();
-	void run_shell();
+	void print_solution(const char * path);												// tools: in current iteration, print solution for this iteration into "path"
+	void freeze();																		// main: used to setFrozen for node2grab, so they will not be removed during simplification
+	void print_map(map<int,string> &container, ofstream &outfile);						// tools: export content of "container" to "outfile"
+	void solve();																		// main: used to solve both miter and addconstrains
+	void export_PI();																	// main: export PI to "PI.txt"
+	void parse_PO();																	// main: parser from "PO.txt"
+	void run_shell();																	// main: run shell
 
 };
 

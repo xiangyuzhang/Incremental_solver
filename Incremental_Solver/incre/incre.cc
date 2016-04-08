@@ -32,12 +32,11 @@ using namespace std;
 
 
 lbool IncreSolver::ret = l_False;
-int IncreSolver::niter = 1;
 bool IncreSolver::debug = false;
-clock_t IncreSolver::start = clock();									// indicator: starting time
-clock_t IncreSolver::totoal_all = 0;										// indicator: all thread total time
-clock_t IncreSolver::total_sub = 0;										// indicator: sub-thread total time
-progress_t IncreSolver::bar;                          
+
+clock_t IncreSolver::start = clock();									
+clock_t IncreSolver::totoal_all = 0;								    
+clock_t IncreSolver::total_sub = 0;										
 
 const char * IncreSolver::Orac_file_path;
 const char * IncreSolver::Came_file_path;
@@ -46,26 +45,28 @@ const char * IncreSolver::Solver_solution = "NULL";
 
 SimpSolver IncreSolver::S;
 SimpSolver IncreSolver::S_final;
+progress_t IncreSolver::bar;                          
 
+int IncreSolver::niter = 1;                        
 int IncreSolver::miterOutIndex = 0;
-int IncreSolver::cktTotVarNum = 0;                // number of wire including miter and oracle circuit 
-int IncreSolver::camVarNum = 0;                   // total number of wires + inputs + CBs + outputs in the original cam ckt   
+int IncreSolver::cktTotVarNum = 0;                
+int IncreSolver::camVarNum = 0;                    
 
 vector<int> IncreSolver::nodes2grab;
-vector<int> IncreSolver::camCBindex;              // CB expect duplicated circuit
-vector<int> IncreSolver::miterCBindex;            // CB include duplicated circuit 
-vector<int> IncreSolver::camCB2index;             // suplication's CB
-vector<int> IncreSolver::camPIndex;               // miter first circuit's PI, and also it the oracle's PI
+vector<int> IncreSolver::camCBindex;              
+vector<int> IncreSolver::miterCBindex;            
+vector<int> IncreSolver::camCB2index;          
+vector<int> IncreSolver::camPIndex;               
 vector<int> IncreSolver::camPOindex;
-vector<int> IncreSolver::OracPOndex;
-vector<string> IncreSolver::camCNFile;            // original Camouflaged circuit CNF
 
-map<int, string> IncreSolver::indexVarDict;       // store map of index to netname
-map<string, int> IncreSolver::varIndexDict;       // store map of netname to index
+vector<string> IncreSolver::camCNFile;            
+
+map<int, string> IncreSolver::indexVarDict;       
+map<string, int> IncreSolver::varIndexDict;       
 
 
-vector<map<int, string> > IncreSolver::OracPIs;   // store all temp PIs 
-vector<map<int, string> > IncreSolver::OracPOs;   // store all temp POs              
+vector<map<int, string> > IncreSolver::OracPIs;   
+vector<map<int, string> > IncreSolver::OracPOs;                
 //=================================================================================================
 //implementation of IncreSolver
 IncreSolver::IncreSolver()
@@ -84,7 +85,6 @@ lbool IncreSolver::check_ret()
 }
 
 
-
 void IncreSolver::print_state()
 {
     
@@ -97,8 +97,6 @@ void IncreSolver::print_state()
     cout << "|\tCPU usage:           \t\t\t" << getCurrentValue() << " %" << endl;
 	cout << "===============================================================================" << endl;
 }
-
-
 
 
 vector<string> IncreSolver::assign_value(map<int, string> &value_map, vector<int> what)
@@ -199,6 +197,8 @@ void IncreSolver::print_progress(string info, int progress)
     cout << "\r" << info << flush;
     progress_show(&bar, progress/100.0f);
 }
+
+
 //=================================================================================================
 //implementation of MiterSolver
 MiterSolver::MiterSolver()
@@ -430,12 +430,9 @@ void MiterSolver::genCameCNF(char const * CamePath)
             }
             else
             {
-                if(debug == true) 
-                    {
-                        cerr << "Verilog format is not acceptable!!!" << endl;
-                        cerr << "illegal line is: " << report << endl;
-                    }
-                exit(-1);
+                cerr << "error: Verilog format is not acceptable!!!" << endl;
+                cerr << "illegal line is: " << report << endl;
+                exit(3);
             }
 
 
@@ -456,8 +453,6 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 cnFile.push_back(*iter);
             }
             gateCnt++;
-
-
         }   
     }
 
@@ -538,7 +533,6 @@ void MiterSolver::genCameCNF(char const * CamePath)
 void MiterSolver::buildmiter()
 {
     genCameCNF(Came_file_path);
-    // genOracCNF(Orac_file_path, baseMtrVarNum + 1);
     if(debug == true) clog << "Start to buildmiter" << endl;
 
 //========================================================================================================================
@@ -565,13 +559,6 @@ void MiterSolver::buildmiter()
 
     } 
     miterCBindex = camCBindex + camCB2index;
-//========================================================================================================================    
-//update oracPOnodes2grab with the linked oracle circuit
-//    for(vector<int>::iterator po = OracPOndex.begin(); po != OracPOndex.end(); ++po)
-//    {
-//        int newPO = *po + miterOutIndex;
-//        oracPONodes2grab.push_back(newPO);
-//    }
 //========================================================================================================================
 //nodes2grab now includes miterCBindex, camPIndex
     nodes2grab = camPIndex; 
@@ -582,18 +569,16 @@ void MiterSolver::buildmiter()
 //    print_vector(miterCBindex, "miterCBindex");
 //    print_vector(nodes2grab, "nodes2grab");
     if(!debug) print_progress("Miter Built   \t", 26);
-
-
 }
 
 //=================================================================================================
 //implementation of AddonSolver
 
-
 AddonSolver::AddonSolver():IncreSolver()
 {
 
 }
+
 AddonSolver::~AddonSolver()
 {
 //    cout << "AddonSolver is deleted" << endl;
@@ -785,10 +770,9 @@ void AddonSolver::continue_solving()
         addon.insert(addon.begin(), cmmtline1); 
         print_vector(addon, target_cnf);
     }
-
 }
 
-void AddonSolver::export_PI()                                                         // tools: input is map<int, string> PItemp, target is map<string, string>(netname, vlaue)
+void AddonSolver::export_PI()                                                         
 {
 	ofstream outfile;
 	outfile.open("PI.txt", std::ios::out);
@@ -803,10 +787,11 @@ void AddonSolver::export_PI()                                                   
     }
     outfile << endl;
 }
-void AddonSolver::parse_PO()                                                         // tools: input is map<string, string>(netname, value), target is map<int, string> POtemp;
-{
-	ifstream infile;
-	infile.open("PO.txt", std::ios::in);
+
+void AddonSolver::parse_PO()  
+{                                                       
+	ifstream infile("PO.txt");
+	//infile.open("PO.txt", std::ios::in);
 	string first_line;
 	string second_line;
 
@@ -824,7 +809,6 @@ void AddonSolver::parse_PO()                                                    
 		POtemp.insert(pair<int, string>(varIndexDict[*name], *value));
 		value++;
 	}
-
 }
 
 //========================================================================================================================
@@ -837,12 +821,12 @@ void AddonSolver::parse_PO()                                                    
 SoluFinder::SoluFinder()
 {
     if(!debug) print_progress("Final Solve   \t", 80);
-
 }
 
 SoluFinder::~SoluFinder()
 {
 }
+
 void SoluFinder::freeze()
 {
     for(vector<int>::iterator index = camCBindex.begin(); index != camCBindex.end(); ++index)
@@ -850,6 +834,7 @@ void SoluFinder::freeze()
         S.setFrozen(*index - 1, true);
     }            
 }
+
 void SoluFinder::find_solu()
 {
 
@@ -874,6 +859,7 @@ void SoluFinder::find_solu()
     remove("finalSolu.cnf");
     remove("target.cnf");
 }
+
 void SoluFinder::case_1()
 {
     vector<vector<string> > tmpCnfLs;
@@ -999,10 +985,7 @@ void SoluFinder::print_solution()
     {
         print_vector(content, Solver_solution);
         cout << "\nSolution saved in: " << Solver_solution << endl;
-
     }
-
-
 
 }                                                                          
 
@@ -1033,15 +1016,15 @@ Support::Support(int one, char ** two)
     }
     bool ok = a.parse(argc, argv);
 
-    if(argc == 1 || a.exist("help")) {cerr << a.usage(); exit(-1);}
-    if(!ok) {cerr << a.error() << endl << a.usage(); exit(-1);}
-    if(a.rest().size() < 2) {cout << "Please provide both <Cam.v> and <Orac.sh>" << endl; exit(-1);}
+    if(argc == 1 || a.exist("help")) {cerr << a.usage(); exit(4);}
+    if(!ok) {cerr << a.error() << endl << a.usage(); exit(5);}
+    if(a.rest().size() < 2) {cout << "Please provide both <Cam.v> and <Orac.sh>" << endl; exit(6);}
     else
     {
 	    if((access(a.rest()[0].c_str(), 04)) != -1){Came_file_path = realpath(a.rest()[0].c_str(), NULL);}
-	    else{cout << "error: Camouflage Circuit is not existed or read prohibited!!!\n"; exit(-1);}
+	    else{cout << "error: Camouflage Circuit is not existed or read prohibited!!!\n"; exit(7);}
 	    if((access(a.rest()[1].c_str(), 04)) != -1){Orac_file_path = realpath(a.rest()[1].c_str(), NULL);}
-	    else{cout << "error: Shell file is not existed or read prohibited!!!\n"; exit(-1);}
+	    else{cout << "error: Shell file is not existed or read prohibited!!!\n"; exit(8);}
     }
 
     debug = a.exist("debug");
