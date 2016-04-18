@@ -1,3 +1,6 @@
+#ifndef INCRE_INCRE_TOOLS_H
+#define INCRE_INCRE_TOOLS_H
+
 #include <map>
 #include <string>
 #include <vector>
@@ -6,13 +9,13 @@
 #include <iostream>
 #include <regex>
 
-#ifndef INCRE_INCRE_TOOLS_H
-#define INCRE_INCRE_TOOLS_H
+
 
 using namespace std;
 
 namespace Incre
 {
+
 
 inline string get_localtime()
     {
@@ -37,7 +40,39 @@ inline void SplitString(const std::string& s, std::vector<std::string>& v, const
       if(pos1 != s.length())
         v.push_back(s.substr(pos1));
     }
+inline string stripComments(string in)
+{
+    regex pattern("\\/\\/(?!RE__ALLOW).*\\n");
+    smatch m;
+    regex_search(in,m,pattern);
 
+    while(regex_search(in,m,pattern))
+    {
+        in = in.replace(in.find(m[0].str()), m[0].str().length(), "");
+    }
+
+    return in;
+}
+inline string toBinary(int n, int length)
+{
+    string r;
+    string result;
+    if( n == 0)
+    {
+        r = "0";
+    }
+    while( n!= 0)
+    {
+        r = (n%2 == 0 ? "0":"1") + r;
+        n/=2;
+    }
+    result = r;
+    for(unsigned int i = 0; i < length - r.length(); i++)
+    {
+        result = "0" + result;
+    }
+    return result;
+}
 
 inline string Readall(const char* path)
     {
@@ -48,8 +83,6 @@ inline string Readall(const char* path)
         string strdata(beg, end);
         in.close(); 
 
-    //	cout << "Now start test" << endl;
-    //	cout << strdata << endl;
         return strdata;
     }
 
@@ -61,7 +94,6 @@ inline void strip_all(string& str,const string old_value)
     		if(str.find(old_value) != string::npos)
     		{
     			str.replace(str.find(old_value), old_value.length(), "");
- //   			cout << "replaced string is " << str << endl;
     		}
     		else
     		{
@@ -99,23 +131,20 @@ inline void print_map(map<int, string>& input_map)
     	string read_all;
     	read_all = Readall(path);
     	strip_all(read_all, "\r");
-    	SplitString(read_all, result, ";\n");
+    	SplitString(read_all, result, ";");
     	return result;
     }
 inline vector<string> find_netname(string gate)
 
     {
-//    	cout << "Test start" << endl;
     	string s = gate;
     	vector<string> container;
     	vector<string> netnames;
     	SplitString(s, container, "(");
     	for (vector<string>::iterator iter = container.begin(); iter != container.end(); ++iter) {
-    		//   cout << "The is the original line: " << *iter << endl;
     		smatch nets;
     		regex pattern("([^\\)]+)([\\)])");
     		regex_search(*iter, nets, pattern);
-    		//      cout << "Number of found:" << nets.size() << endl;
     		for (unsigned int i = 0; i < nets.size(); i++) {
     			if (nets[i].str().find(")") == string::npos) netnames.push_back(nets[i].str());
     		}
@@ -124,7 +153,6 @@ inline vector<string> find_netname(string gate)
     	}
 
     	for (vector<string>::iterator iter = netnames.begin(); iter != netnames.end(); ++iter) {
-    //	  cout << *iter << endl;
     	}
     	return netnames;
 
@@ -157,15 +185,6 @@ inline void print_vector(vector<int> list, const char * path)
         }
 }
 
-inline map<int, string>  index_to_netname(map<string, int>  source)
-{
-    map<int, string> result;
-    for(map<string, int>::iterator index = source.begin(); index != source.end(); index++)
-    {
-        result.insert(std::pair<int, string>(index->second, index->first));
-    }
-    return result;
-}
 
 template <typename T>
 std::vector<T> operator+(const std::vector<T> &A, const std::vector<T> &B)

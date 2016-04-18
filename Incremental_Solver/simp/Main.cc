@@ -47,38 +47,42 @@ try
 //=================================================================================================================================
 // build miter based on income cam file
 
-	MiterSolver MTR;
-    MTR.buildmiter();
+	MiterSolver *MTR = new MiterSolver;
+	MTR->buildmiter();
+	delete MTR;	
 //=================================================================================================================================
 // incrementally solve
 
 
     while(1)
     {
-     	AddonSolver ADD;
+     	AddonSolver *ADD = new AddonSolver;
 
-    	ADD.start_solving();  
+    	ADD->start_solving();  
     	if(IncreSolver::check_ret() == l_True)
     	{
-            ADD.queryOrac();
-	     	ADD.continue_solving();
+            ADD->queryOrac();
+	    ADD->continue_solving();
     	} 	
     	else 
         {
             break;
         }
+            delete ADD;
     }
 //================================================================================================================================
 // find final Solution
-    SoluFinder finder;
-    finder.find_solu();
+    SoluFinder *finder = new SoluFinder;
+    finder->find_solu();
     IncreSolver::print_state();
-    finder.print_solution();
+    finder->print_solution();
+    delete finder; 
     return 0;
 } catch(...)
 {
-    cerr << "===============================================================================" << endl;
+    cerr << "\n\n===============================================================================" << endl;
     cerr << "FATAL ERROR, EXIT" << endl;
+    exit(0);
 
 }
 }

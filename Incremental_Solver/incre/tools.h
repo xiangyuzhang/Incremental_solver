@@ -42,7 +42,7 @@ inline void SplitString(const std::string& s, std::vector<std::string>& v, const
     }
 inline string stripComments(string in)
 {
-    regex pattern("\\/\\/(?!RE__ALLOW).*\\n");
+    regex pattern("\\/\\/(?!RE__).*\\n");
     smatch m;
     regex_search(in,m,pattern);
 

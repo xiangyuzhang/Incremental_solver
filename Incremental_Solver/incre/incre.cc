@@ -33,6 +33,8 @@ using namespace std;
 
 lbool IncreSolver::ret = l_False;
 bool IncreSolver::debug = false;
+bool IncreSolver::out_file = false;
+bool IncreSolver::time_limit = false;
 
 clock_t IncreSolver::start = clock();									
 clock_t IncreSolver::totoal_all = 0;								    
@@ -47,6 +49,7 @@ SimpSolver IncreSolver::S;
 SimpSolver IncreSolver::S_final;
 progress_t IncreSolver::bar;                          
 
+int IncreSolver::time_bound = 3600;
 int IncreSolver::niter = 1;                        
 int IncreSolver::miterOutIndex = 0;
 int IncreSolver::cktTotVarNum = 0;                
@@ -194,8 +197,9 @@ void IncreSolver::grab(vector<int> &list, map<int,string> &target)
 
 void IncreSolver::print_progress(string info, int progress)
 {
-    cout << "\r" << info << flush;
     progress_show(&bar, progress/100.0f);
+    cout << "\r" << info << flush;
+
 }
 
 
@@ -309,9 +313,8 @@ void MiterSolver::genCameCNF(char const * CamePath)
 
     if(debug == true) clog << "Reading data from " << CamePath << endl;
     if(!debug) print_progress("Generate Miter\t", 2);
-
     SplitString(stripComments(Readall(CamePath)), Vlines,";");
-    
+    // cout << stripComments(Readall(CamePath)) << endl;
 //======================================================================================================================
 //parse the first camouflaged circuit 
 
@@ -320,10 +323,39 @@ void MiterSolver::genCameCNF(char const * CamePath)
         string line= *iter;
         strip_all(line, "\r");
         strip_all(line, "\n");
-        if((line.find("input") != string::npos))
+        if((line.find("input") != string::npos) && ((*(iter + 1)).find("RE__PI") != string::npos))
         {     
+            if(!debug) print_progress("Parse PI  \t", 3);
 
-            if(!debug) print_progress("Parse Inputs  \t", 3);
+            string next_line = *(iter + 1);
+            vector<string> PIs;         
+            vector<int> tmpPis;
+
+            if(line.find("CONST1") != string::npos) has_const1 = true;
+            if(line.find("CONST0") != string::npos) has_const0 = true;
+
+            strip_all(line, "input");
+            strip_all(line, " ");
+            SplitString(line, PIs, ","); 
+
+            for(vector<string>::iterator pi = PIs.begin(); pi != PIs.end(); ++pi)
+            {
+                strip_all(*pi, "[");
+                strip_all(*pi, "]");
+                strip_all(*pi, " ");
+                strip_all(*pi, "\t");
+                // cout << *pi << " " << varIndex << endl;
+                varIndexDict.insert(std::pair<string, int>(*pi, varIndex));
+                indexVarDict.insert(std::pair<int, string>(varIndex, *pi));
+                tmpPis.push_back(varIndex);
+                ++varIndex;  
+            }  
+            camPIndex = tmpPis;
+        }
+
+        else if((line.find("input") != string::npos) && (*(iter + 1)).find("RE__ALLOW") != string::npos)
+        {    
+            if(!debug) print_progress("Parse CB  \t", 3);
 
             string next_line = *(iter + 1);
             string line_with_allow;
@@ -337,7 +369,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
             if(next_line.find("RE__ALLOW") != string::npos)
             {
                 has_allowBits = true;
-                line_with_allow = line + next_line;
+               line_with_allow = line + next_line;
             }
 
             strip_all(line, "input");
@@ -350,18 +382,19 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 strip_all(*pi, "]");
                 strip_all(*pi, " ");
                 strip_all(*pi, "\t");
+                // cout << *pi << " " << varIndex << endl;
+
                 varIndexDict.insert(std::pair<string, int>(*pi, varIndex));
                 indexVarDict.insert(std::pair<int, string>(varIndex, *pi));
                 tmpPis.push_back(varIndex);
                 varIndex++;  
             }  
-            inputs.push_back(tmpPis); 
+            camCBindex += tmpPis;
 
             if(has_allowBits)
             {
                 forbidden_string += forbidden_bits(line_with_allow, tmpPis);
             }
-
         }
 
         else if((line.find("output") != string::npos) && (line.find("//") == string::npos))
@@ -382,6 +415,8 @@ void MiterSolver::genCameCNF(char const * CamePath)
                 strip_all(*po, " ");
                 strip_all(*po, "\t");
 //              cout << *po << endl;
+	            // cout << *po << " " << varIndex << endl;
+             
                 posIndex.push_back(varIndex);
                 varIndexDict.insert(std::pair<string,int>(*po, varIndex));
                 indexVarDict.insert(std::pair<int, string>(varIndex, *po));
@@ -402,6 +437,8 @@ void MiterSolver::genCameCNF(char const * CamePath)
 
             for(vector<string>::iterator w = wires.begin(); w != wires.end(); ++w)
             {
+	            // cout << *w << " " << varIndex << endl;
+
                 strip_all(*w, "[");
                 strip_all(*w, "]"); 
                 strip_all(*w, " ");
@@ -413,10 +450,9 @@ void MiterSolver::genCameCNF(char const * CamePath)
         }
         
 
-        else if((line != "") && (line.find("RE__ALLOW") == string::npos) &&(line.find("module") == string:: npos))
+        else if((line != "") && (line.find("RE__") == string::npos) &&(line.find("module") == string:: npos))
         {
             if(!debug) print_progress("Parse Gates   \t", 10);
-
             string report = line;
             string gate;
             vector<string> cnfLines;
@@ -475,7 +511,7 @@ void MiterSolver::genCameCNF(char const * CamePath)
     if(!debug) print_progress("Connect PIs   \t", 25);
 
     cnFile_merged.push_back("c Force PIs of 2 ckts to be the same:\n"); 
-    vector<string> connection = connectNets(inputs[0], camVarNum); 
+    vector<string> connection = connectNets(camPIndex, camVarNum); 
     vector<string> cnFile_PIconnected;          
     cnFile_PIconnected = cnFile_merged + connection;
 //    print_vector(cnFile_PIconnected, "cnFile_PIconnected");
@@ -517,11 +553,11 @@ void MiterSolver::genCameCNF(char const * CamePath)
 
 
     baseCnfMtrLs = final_miter;
-    camPIndex = inputs.front();
-    for(vector<vector<int> >::iterator iter = inputs.begin() + 1; iter != inputs.end(); ++iter)
-    {
-        camCBindex += *iter;
-    }
+//    camPIndex = inputs.front();									///////////////////////
+//   for(vector<vector<int> >::iterator iter = inputs.begin() + 1; iter != inputs.end(); ++iter)			/////////////
+//    {
+//        camCBindex += *iter;
+//    }
     camPOindex = posIndex;
     baseMtrVarNum = varNum;
     miterOutIndex = varNum; 
@@ -543,8 +579,8 @@ void MiterSolver::buildmiter()
 // baseCnfMtrls includes two camouflages, PI connection, PO connection, OR, CONST
     string cmmtline1 = "c this file is generated by buildmiter\n";
     string cmmtline2 = "c generated on " + get_localtime();
-    string problemLn = "p cnf " + tostring(cktTotVarNum) + " " + tostring(baseCnfMtrLs.size() + forbidden_string.size() - 5) + "\n";
-    baseCnfMtrLs.insert(baseCnfMtrLs.begin(), problemLn);
+//    string problemLn = "p cnf " + tostring(cktTotVarNum) + " " + tostring(baseCnfMtrLs.size() + forbidden_string.size() - 5) + "\n";
+//    baseCnfMtrLs.insert(baseCnfMtrLs.begin(), problemLn);
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline2);
     baseCnfMtrLs.insert(baseCnfMtrLs.begin(), cmmtline1);
     string cmmtline3 = "c this is forbidden constrains\n";
@@ -569,6 +605,7 @@ void MiterSolver::buildmiter()
 //    print_vector(miterCBindex, "miterCBindex");
 //    print_vector(nodes2grab, "nodes2grab");
     if(!debug) print_progress("Miter Built   \t", 26);
+    if(debug) print_vector(baseCnfMtrLs, "miter");
 }
 
 //=================================================================================================
@@ -601,13 +638,16 @@ void AddonSolver::freeze()
 void AddonSolver::start_solving()
 {
     //solve miter, grabnodes
+
     if(!debug) print_progress("Solve Addons  \t", 27);
     solve();    
 
     grabnodes();                // grab CB1 CB2 info and PItemp
 
     if(!debug) print_progress("Export PIs   \t", 27);
-    export_PI();
+    export_PI();        
+    
+
 }
 
 void AddonSolver::queryOrac()
@@ -913,7 +953,7 @@ void SoluFinder::solve_it()
         content += "UNSAT\n";
         if(debug == true) cerr << "Pre-process: UNSAT" << endl;
     }
-    
+
     vec<Lit> dummy;
     lbool ret = S_final.solveLimited(dummy);
 
@@ -980,8 +1020,8 @@ void SoluFinder::print_solution()
     }
     clog << endl;
     content.push_back("\n");
-    string temp("NULL");
-    if(Solver_solution != temp.c_str())
+
+    if(out_file)
     {
         print_vector(content, Solver_solution);
         cout << "\nSolution saved in: " << Solver_solution << endl;
@@ -995,7 +1035,7 @@ Support::Support(int one, char ** two)
 {
     init();
     string title(" ");
-    progress_init(&bar, strdup(title.c_str()), 100, PROGRESS_CHR_STYLE);
+    progress_init(&bar, strdup(title.c_str()), 100, PROGRESS_NUM_STYLE);
 	int argc = one;
 	char **argv = two;
     a.add("debug", 'd', "change to debug mode");
@@ -1009,9 +1049,10 @@ Support::Support(int one, char ** two)
         cout << "SOLVER is a SAT-based Incremental Solver, it takes <Cam.v> and <Orac.sh> as inputs. " << endl;
         cout << "During each iteration, Solver will generate 'PI.txt' as outfile, and read in 'PO.txt'." << endl;
         cout << "For detailed information please visit:\n" << endl;
-        cout << "<Cam.v>     \t\tcamouflaged netlist to be solved" << endl;
-        cout << "<Orac.sh>   \t\tshell script to query Oracle" << endl;
-        cout << "-d, --debug \t\tchange to debug mode, solver will generate log messages and log files" << endl;
+        cout << "<Cam.v>       \t\tcamouflaged netlist to be solved" << endl;
+        cout << "<Orac.sh>     \t\tshell script to query Oracle" << endl;
+        cout << "-d, --debug   \t\tchange to debug mode, solver will generate log messages and log files" << endl;
+        cout << "-o, --outfile \t\texport solution to this file" << endl;
         exit(0);
     }
     bool ok = a.parse(argc, argv);
@@ -1026,10 +1067,12 @@ Support::Support(int one, char ** two)
 	    if((access(a.rest()[1].c_str(), 04)) != -1){Orac_file_path = realpath(a.rest()[1].c_str(), NULL);}
 	    else{cout << "error: Shell file is not existed or read prohibited!!!\n"; exit(8);}
     }
-
     debug = a.exist("debug");
-
-    Solver_solution = a.get<string>("outfile").c_str();
+    if(a.exist("outfile"))
+    {
+        Solver_solution = a.get<string>("outfile").c_str();   
+        out_file = true;   
+    }
 
 }
 
