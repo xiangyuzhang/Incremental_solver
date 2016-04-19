@@ -295,6 +295,62 @@ vector<string> MiterSolver::forbidden_bits(string line, vector<int> target)
         return final;
     }
 }
+
+void MiterSolver::formatCheck(vector<string> netlist)
+{
+	bool format_error = false;
+	for(vector<string>::iterator it = netlist.begin(); it != netlist.end(); ++it)
+	{
+		string line = *it;
+		if(line.find("input") != string::npos)
+		{
+			string next_line = *(it+1);
+
+			if(next_line.find("RE__ALLOW") != string::npos)
+			{
+				vector<string> allow_list;
+				vector<string> net_list;
+				// get net list in this line
+				strip_all(line, "input");
+				strip_all(line, " ");
+				strip_all(line, "\t");
+				strip_all(line, "\n");
+        		SplitString(line, net_list, ",");
+        		// get allow bits list in next line
+				smatch result;
+        		regex pattern("(\\().*(\\))");
+        		regex_search(next_line, result, pattern);
+        		string allow_string = result[0].str();
+        		strip_all(allow_string,"(");
+        		strip_all(allow_string, ")");
+        		SplitString(allow_string, allow_list, ",");
+        		// compare whether the length is matching
+        		for(auto pair: allow_list)
+        		{
+        			if(pair.length() != net_list.size()) 
+        			{
+        				cerr << "Format Error: length of allow bits mistach" << endl;
+        				cerr << "At: " << "input " + line << endl;
+        				format_error = true;
+        			}
+        		}
+			}
+
+			else if(next_line.find("RE__PI") != string::npos) continue;
+			else 
+			{
+				strip_all(line, "\t");
+				strip_all(line, "\n");
+				cerr << "Format Error: input should be marked" << endl;
+				cerr << "At: " << line << endl;
+        		format_error = true;
+
+			}
+
+		}
+	}
+	if(format_error) exit(10);
+}
 void MiterSolver::genCameCNF(char const * CamePath)
 {
     vector<string> cnfLines;
@@ -314,6 +370,8 @@ void MiterSolver::genCameCNF(char const * CamePath)
     if(debug == true) clog << "Reading data from " << CamePath << endl;
     if(!debug) print_progress("Generate Miter\t", 2);
     SplitString(stripComments(Readall(CamePath)), Vlines,";");
+    vector<string> netlist = Vlines;
+    formatCheck(netlist);
     // cout << stripComments(Readall(CamePath)) << endl;
 //======================================================================================================================
 //parse the first camouflaged circuit 
@@ -439,8 +497,6 @@ void MiterSolver::genCameCNF(char const * CamePath)
             {
 	            // cout << *w << " " << varIndex << endl;
 
-                strip_all(*w, "[");
-                strip_all(*w, "]"); 
                 strip_all(*w, " ");
                 strip_all(*w, "\t");
                 varIndexDict.insert(std::pair<string,int>(*w, varIndex));

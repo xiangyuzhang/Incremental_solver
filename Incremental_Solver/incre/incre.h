@@ -115,14 +115,15 @@ private:
 	std::vector<std::string> forbidden_string;															// CNF: forbidden string
 		
 public:
-	MiterSolver();																				// constructor: initialize base class and milterSolver
-	~MiterSolver();																				// deconstructor
-	void buildmiter();																			// main: build CNF formatted miter and export to Miter_file_path
+	MiterSolver();																									// constructor: initialize base class and milterSolver
+	~MiterSolver();																									// deconstructor
+	void buildmiter();																								// main: build CNF formatted miter and export to Miter_file_path
 private:
-	void genOracCNF(char const * OracPath, int start);											// main: parse "OracPath", generate CNF, index start on "start"
-	void genCameCNF(char const * CamePath);														// main: parse "CamePath" and generate CNF
+	void genOracCNF(char const * OracPath, int start);																// main: parse "OracPath", generate CNF, index start on "start"
+	void genCameCNF(char const * CamePath);																			// main: parse "CamePath" and generate CNF
 	std::vector<std::string> forbidden_bits(std::string line, std::vector<int> target);								// main: process forbidden options
 	std::vector<std::string> connectPO_xor(std::vector<int> &posIndex, int &camVarNum, int &xorInt);				// tools: connect POs using xor, used only for two duplicated circuit
+	void formatCheck(std::vector<std::string> netlist);
 };
 
 
